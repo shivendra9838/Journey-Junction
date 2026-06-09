@@ -27,6 +27,8 @@ if (!process.env.SESSION_SECRET) {
 
 const app: Express = express();
 
+app.set("trust proxy", 1);
+
 app.use(helmet());
 app.use(compression());
 app.use(morgan("combined"));
