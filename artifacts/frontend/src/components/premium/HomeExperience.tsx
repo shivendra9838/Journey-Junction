@@ -35,7 +35,7 @@ export function PremiumHero({ destinationCount, search, onSearch, onChip, onPlan
         animate={{ scale: 1.05 }}
         transition={{ duration: 20, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
         className="absolute inset-0 h-full w-full object-cover"
-        src="/images/nature.mp4"
+        src="https://res.cloudinary.com/dwuafqgc2/video/upload/v1780994725/13861364_3840_2160_30fps_zcg5s1.mp4"
       />
 
       <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/40 to-black/90" />
