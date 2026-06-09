@@ -1,0 +1,21 @@
+{
+  "name": "@workspace/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./src/schema/phase1": "./src/schema/phase1.ts",
+    "./src/schema/phase2": "./src/schema/phase2.ts",
+    "./src/schema/phase3": "./src/schema/phase3.ts",
+    "./src/schema/phase4": "./src/schema/phase4.ts",
+    "./src/schema/bookingTransport": "./src/schema/bookingTransport.ts"
+  },
+  "dependencies": {
+    "mongoose": "^9.6.1",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:"
+  }
+}

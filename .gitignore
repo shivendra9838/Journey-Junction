@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+artifacts/*/dist/
+coverage/
+artifacts/*/coverage/
+uploads/
+artifacts/*/uploads/
+*.log
+*.tsbuildinfo
+artifacts/backend/test*.cjs
+artifacts/backend/test*.mjs
+artifacts/frontend/public/images/nature.mp4

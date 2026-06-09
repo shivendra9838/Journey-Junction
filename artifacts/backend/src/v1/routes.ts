@@ -1,0 +1,40 @@
+import { Router } from "express";
+import activityRoutes from "./features/activities/activity.routes";
+import authRoutes from "./features/auth/auth.routes";
+import destinationRoutes from "./features/destinations/destination.routes";
+import hotelRoutes from "./features/hotels/hotel.routes";
+import profileRoutes from "./features/profile/profile.controller";
+import reviewRoutes from "./features/reviews/review.routes";
+import searchRoutes from "./features/search/search.routes";
+import wishlistRoutes from "./features/wishlist/wishlist.routes";
+import phase2Routes from "./features/phase2/phase2.routes";
+import phase3Routes from "./features/phase3/phase3.routes";
+import phase4Routes from "./features/phase4/phase4.routes";
+import inquiryRoutes from "./features/inquiries/inquiry.routes";
+import notificationRoutes from "./features/notifications/notification.routes";
+import supportRoutes from "./features/support/support.routes";
+import docsRoutes from "./docs/docs.routes";
+import { authRateLimit } from "./shared/security";
+import { errorMiddleware, notFoundHandler } from "./shared/errors";
+
+const router = Router();
+
+router.use(docsRoutes);
+router.use("/auth", authRateLimit, authRoutes);
+router.use("/profile", profileRoutes);
+router.use("/destinations", destinationRoutes);
+router.use("/hotels", hotelRoutes);
+router.use("/activities", activityRoutes);
+router.use("/wishlist", wishlistRoutes);
+router.use("/reviews", reviewRoutes);
+router.use("/search", searchRoutes);
+router.use("/inquiries", inquiryRoutes);
+router.use("/support", supportRoutes);
+router.use("/notifications", notificationRoutes);
+router.use(phase2Routes);
+router.use(phase3Routes);
+router.use(phase4Routes);
+router.use(notFoundHandler);
+router.use(errorMiddleware);
+
+export default router;

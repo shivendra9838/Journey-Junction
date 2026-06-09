@@ -1,0 +1,27 @@
+{
+  "name": "workspace",
+  "version": "0.0.0",
+  "license": "MIT",
+  "scripts": {
+    "preinstall": "node -e \"const ua=process.env.npm_config_user_agent||''; if(!ua.startsWith('pnpm/')){console.error('Use pnpm instead'); process.exit(1)}\"",
+    "frontend": "pnpm --filter @workspace/wandr run dev",
+    "backend": "pnpm --filter @workspace/api-server run build && pnpm --filter @workspace/api-server run start",
+    "backend:build": "pnpm --filter @workspace/api-server run build",
+    "frontend:build": "pnpm --filter @workspace/wandr run build",
+    "test:api": "pnpm --filter @workspace/api-server run test",
+    "test:e2e": "pnpm --filter @workspace/wandr run e2e",
+    "build": "pnpm run typecheck && pnpm -r --if-present run build",
+    "typecheck:libs": "tsc --build",
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+  },
+  "private": true,
+  "devDependencies": {
+    "@esbuild/win32-x64": "0.27.3",
+    "@playwright/test": "^1.60.0",
+    "@rollup/rollup-win32-x64-msvc": "4.61.0",
+    "@tailwindcss/oxide-win32-x64-msvc": "4.3.0",
+    "lightningcss-win32-x64-msvc": "1.32.0",
+    "prettier": "^3.8.1",
+    "typescript": "~5.9.2"
+  }
+}

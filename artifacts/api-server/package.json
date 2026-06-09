@@ -1,0 +1,11 @@
+{
+  "name": "@workspace/api-server-redirect",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "pnpm --dir ../backend run start",
+    "build": "pnpm --dir ../backend run build",
+    "dev": "pnpm --dir ../backend run dev"
+  }
+}
