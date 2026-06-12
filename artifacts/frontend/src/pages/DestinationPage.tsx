@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, createContext, useContext, lazy, Suspense } from "react";
+import type { ImgHTMLAttributes } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import type { DestinationData, ActivityItem, HotelItem, TransportPlanItem, MealPlanItem } from "@/data/destinations";
@@ -23,7 +24,39 @@ function WandrLogo({ className = "" }: { className?: string }) {
   );
 }
 
+const FALLBACK_DESTINATION_IMAGE = "/images/unsplash-be41aa2e4372.jpg";
 
+function SafeImage({
+  src,
+  alt = "",
+  className = "",
+  fallbackSrc = FALLBACK_DESTINATION_IMAGE,
+  loading = "lazy",
+  decoding = "async",
+  onError,
+  ...props
+}: ImgHTMLAttributes<HTMLImageElement> & { fallbackSrc?: string }) {
+  const [currentSrc, setCurrentSrc] = useState(src || fallbackSrc);
+
+  useEffect(() => {
+    setCurrentSrc(src || fallbackSrc);
+  }, [src, fallbackSrc]);
+
+  return (
+    <img
+      {...props}
+      src={currentSrc}
+      alt={alt}
+      className={className}
+      loading={loading}
+      decoding={decoding}
+      onError={event => {
+        if (currentSrc !== fallbackSrc) setCurrentSrc(fallbackSrc);
+        onError?.(event);
+      }}
+    />
+  );
+}
 
 const destinations = {
   name: "Goa",
@@ -254,19 +287,19 @@ function GettingThereSection() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-8">
         <div>
           <div className="text-xs font-semibold text-indigo-500 uppercase tracking-widest mb-1">Transport</div>
-          <h2 className="text-3xl font-bold text-stone-900">Getting There</h2>
+          <h2 className="text-2xl font-bold text-stone-900 sm:text-3xl">Getting There</h2>
         </div>
-        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 border border-indigo-100">
+        <div className="flex w-fit max-w-full items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 border border-indigo-100">
           <span>✈️</span>
-          <span className="text-sm font-medium text-indigo-700">{airportName} ({airportCode})</span>
+          <span className="truncate text-sm font-medium text-indigo-700">{airportName} ({airportCode})</span>
         </div>
       </div>
 
       {/* Tab switcher */}
-      <div className="flex gap-2 mb-7 p-1 bg-stone-100 rounded-full w-fit">
+      <div className="mb-7 flex w-fit max-w-full gap-2 overflow-x-auto rounded-full bg-stone-100 p-1">
         {(["flights", "train", "transfer"] as const).map(tab => (
           <button
             key={tab}
@@ -286,16 +319,16 @@ function GettingThereSection() {
       {activeTab === "flights" && (
         <div className="space-y-3">
           <p className="text-sm text-stone-400 mb-5">{flightIntro}</p>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 md:pb-0">
             {flights.map((f, index) => (
-              <div key={`${f.code}-${index}`} className="rounded-2xl bg-white border border-stone-100 shadow-sm p-5 flex gap-4 items-start hover:shadow-md transition-shadow">
+              <div key={`${f.code}-${index}`} className="flex w-[260px] shrink-0 snap-start gap-4 rounded-2xl bg-white border border-stone-100 shadow-sm p-5 items-start hover:shadow-md transition-shadow md:w-auto">
                 <div className="w-12 h-12 rounded-xl bg-stone-50 border border-stone-100 flex items-center justify-center text-2xl shrink-0">
                   {f.flag}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2 mb-1">
                     <div>
-                      <div className="font-bold text-stone-900 text-sm leading-tight">{f.from}</div>
+                      <div className="font-bold text-stone-900 text-sm leading-tight line-clamp-2">{f.from}</div>
                       <div className="text-xs text-stone-400">{f.code} → {airportCode}</div>
                     </div>
                     {f.direct ? (
@@ -305,7 +338,7 @@ function GettingThereSection() {
                     )}
                   </div>
                   <div className="text-xs text-stone-500 mb-2">{f.airline}</div>
-                  <div className="flex items-center gap-4 text-xs">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
                     <span className="flex items-center gap-1 text-stone-500">
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -313,7 +346,7 @@ function GettingThereSection() {
                       {f.duration}
                     </span>
                     <span className="text-stone-400">{f.frequency}</span>
-                    <span className="font-bold text-indigo-600 ml-auto">{f.price}</span>
+                    <span className="font-bold text-indigo-600 md:ml-auto">{f.price}</span>
                   </div>
                 </div>
               </div>
@@ -332,14 +365,14 @@ function GettingThereSection() {
       {activeTab === "train" && (
         <div className="space-y-3">
           <p className="text-sm text-stone-400 mb-5">{trainIntro}</p>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 md:pb-0">
             {trains.map(f => (
-              <div key={f.from + f.type} className="rounded-2xl bg-white border border-stone-100 shadow-sm p-5 hover:shadow-md transition-shadow">
+              <div key={f.from + f.type} className="w-[260px] shrink-0 snap-start rounded-2xl bg-white border border-stone-100 shadow-sm p-5 hover:shadow-md transition-shadow md:w-auto">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <span className="text-xl">{f.icon}</span>
                     <div>
-                      <div className="font-bold text-stone-900 text-sm">{f.from}</div>
+                      <div className="font-bold text-stone-900 text-sm line-clamp-2">{f.from}</div>
                       <div className="text-xs text-indigo-600 font-medium">{f.type}</div>
                     </div>
                   </div>
@@ -413,14 +446,14 @@ function GettingThereSection() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 md:pb-0">
             {transfers.map(t => (
-              <div key={t.type} className={`rounded-2xl border p-5 hover:shadow-md transition-shadow ${t.recommended ? "bg-indigo-600 border-indigo-700 text-white" : "bg-white border-stone-100 shadow-sm"}`}>
+              <div key={t.type} className={`w-[260px] shrink-0 snap-start rounded-2xl border p-5 hover:shadow-md transition-shadow md:w-auto ${t.recommended ? "bg-indigo-600 border-indigo-700 text-white" : "bg-white border-stone-100 shadow-sm"}`}>
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <span className="text-xl">{t.icon}</span>
                     <div>
-                      <div className={`font-bold text-sm ${t.recommended ? "text-white" : "text-stone-900"}`}>{t.type}</div>
+                      <div className={`font-bold text-sm line-clamp-2 ${t.recommended ? "text-white" : "text-stone-900"}`}>{t.type}</div>
                       {t.recommended && (
                         <span className="text-[10px] font-bold text-indigo-200 uppercase tracking-wider">Recommended</span>
                       )}
@@ -1776,7 +1809,7 @@ function ShareModal({ onClose }: { onClose: () => void }) {
 
         {/* Preview card */}
         <div className="flex items-center gap-3 p-3 rounded-2xl bg-stone-50 border border-stone-100 mb-6">
-          <img
+          <SafeImage
             src={dest.heroImage}
             alt={dest.name}
             className="w-14 h-14 rounded-xl object-cover shrink-0"
@@ -1892,7 +1925,7 @@ function ActivityModal({ act, onClose, onBook }: { act: ActivityItem; onClose: (
       >
         {/* Hero image */}
         <div className="relative h-56 overflow-hidden shrink-0">
-          <img src={act.image} alt={act.title} className="w-full h-full object-cover" />
+          <SafeImage src={act.image} alt={act.title} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
           <button
             onClick={onClose}
@@ -2213,7 +2246,7 @@ function HotelModal({ hotel, onClose, startDate, endDate, adults }: {
       >
         {/* Hero */}
         <div className="relative h-52 shrink-0 overflow-hidden">
-          <img src={hotel.image} alt={hotel.name} className="w-full h-full object-cover" />
+          <SafeImage src={hotel.image} alt={hotel.name} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
           <button
             onClick={onClose}
@@ -2592,7 +2625,7 @@ function NearbyDestinationsSection({ destination }: { destination: any }) {
         {nearby.map((item: any) => (
           <a key={item.id} href={`/destination/${item.slug}`} className="group overflow-hidden rounded-2xl border border-stone-100 bg-white shadow-sm block">
             <div className="relative h-44 overflow-hidden">
-              <img src={item.heroImage || destination.heroImage} alt={item.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+              <SafeImage src={item.heroImage || destination.heroImage} alt={item.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
               <div className="absolute bottom-4 left-4 text-lg font-extrabold text-white">{item.name}</div>
             </div>
@@ -2752,8 +2785,19 @@ function DestinationHeroSlider({ destination }: { destination: DestinationData }
             initial="enter"
             animate="center"
             exit="exit"
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.18}
+            onDragEnd={(_, { offset, velocity }) => {
+              const swipe = swipePower(offset.x, velocity.x);
+              if (swipe < -swipeConfidenceThreshold) {
+                paginate(1);
+              } else if (swipe > swipeConfidenceThreshold) {
+                paginate(-1);
+              }
+            }}
             transition={{ opacity: { duration: 0.8, ease: "easeInOut" }, scale: { duration: 1.2, ease: "easeOut" } }}
-            className="absolute inset-0 w-full h-full"
+            className="absolute inset-0 w-full h-full touch-pan-y"
           >
             {isVideoUrl(currentMedia) ? (
               <video 
@@ -2769,11 +2813,12 @@ function DestinationHeroSlider({ destination }: { destination: DestinationData }
                 }}
               />
             ) : (
-              <img 
+              <SafeImage
                 src={currentMedia} 
                 className="w-full h-full object-cover" 
                 style={{ objectPosition: objPosition }}
                 alt="" 
+                loading="eager"
               />
             )}
           </motion.div>
@@ -2783,7 +2828,7 @@ function DestinationHeroSlider({ destination }: { destination: DestinationData }
             {isVideoUrl(uniqueMedia[0]) ? (
               <video src={uniqueMedia[0]} className="w-full h-full object-cover" style={{ objectPosition: objPosition }} muted loop autoPlay playsInline />
             ) : (
-              <img src={uniqueMedia[0]} className="w-full h-full object-cover" style={{ objectPosition: objPosition }} alt="" />
+              <SafeImage src={uniqueMedia[0]} className="w-full h-full object-cover" style={{ objectPosition: objPosition }} alt="" loading="eager" />
             )}
         </div>
       )}
@@ -2845,7 +2890,6 @@ function DestinationPageInner({ destination }: { destination: DestinationData })
   const [signInOpen, setSignInOpen] = useState(false);
   const [itineraryOpen, setItineraryOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("overview");
-  const [scrollProgress, setScrollProgress] = useState(0);
   const [selectedActivity, setSelectedActivity] = useState<ActivityItem | null>(null);
   const [tripBookingOpen, setTripBookingOpen] = useState(false);
   const [tripInitialHotel, setTripInitialHotel] = useState<HotelItem | null>(null);
@@ -2875,21 +2919,10 @@ function DestinationPageInner({ destination }: { destination: DestinationData })
     return () => observers.forEach(o => o.disconnect());
   }, []);
 
-  useEffect(() => {
-    function handleScroll() {
-      const scrollTop = window.scrollY;
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-      const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
-      setScrollProgress(Math.min(100, Math.max(0, progress)));
-    }
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
   function scrollToSection(id: string) {
     const el = document.getElementById(`section-${id}`);
     if (!el) return;
-    const offset = 130;
+    const offset = 90;
     const top = el.getBoundingClientRect().top + window.scrollY - offset;
     window.scrollTo({ top, behavior: "smooth" });
   }
@@ -2947,52 +2980,45 @@ function DestinationPageInner({ destination }: { destination: DestinationData })
 
   return (
     <DestCtx.Provider value={destination}>
-    <div className="min-h-screen bg-stone-50 font-sans text-stone-800 pt-[68px]">
+    <div className="min-h-screen overflow-x-hidden bg-stone-50 font-sans text-stone-800 pt-[68px]">
       <Navbar />
 
       {/* Sub-nav for destination sections */}
-      <div className="sticky top-[68px] z-40 flex items-center justify-between px-4 md:px-10 py-3 bg-white border-b border-stone-100 shadow-sm">
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
-          {([
-            { id: "overview", label: "Explore" },
-            { id: "activities", label: "Tours" },
-            { id: "hotels", label: "Hotels" },
-            { id: "reviews", label: "About" },
-          ] as { id: string; label: string }[]).map(({ id, label }) => (
-            <button
-              key={id}
-              onClick={() => scrollToSection(id)}
-              className="px-4 py-2 text-sm font-medium text-stone-600 hover:text-indigo-600 transition-colors"
-            >
-              {label}
-            </button>
-          ))}
+      <div className="relative z-30 flex items-center gap-3 px-3 sm:px-4 md:px-10 py-3 bg-white border-b border-stone-100 shadow-sm">
+        <div className="min-w-0 flex-1 overflow-x-auto scrollbar-hide">
+          <div className="flex w-max items-center gap-1">
+            {([
+              { key: "explore", label: "Explore", onClick: () => scrollToSection("overview") },
+              { key: "tours", label: "Tours", onClick: () => scrollToSection("activities") },
+              { key: "hotels", label: "Hotels", onClick: () => scrollToSection("hotels") },
+              { key: "share", label: "Share", onClick: () => setShareOpen(true) },
+              { key: "save", label: "Save", onClick: handleSave },
+            ] as { key: string; label: string; onClick: () => void }[]).map(({ key, label, onClick }) => (
+              <button
+                key={key}
+                onClick={onClick}
+                className="shrink-0 px-3 sm:px-4 py-2 text-sm font-medium text-stone-600 hover:text-indigo-600 transition-colors"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <button onClick={() => setShareOpen(true)} className="text-sm font-medium text-stone-600 hover:text-stone-900">Share</button>
-          <button onClick={handleSave} className="text-sm font-medium text-stone-600 hover:text-rose-500">Save</button>
+        <div className="hidden shrink-0 items-center gap-2 md:flex">
           <button
             onClick={() => openTripBooking()}
-            className="hidden md:block px-4 py-1.5 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm"
+            className="px-4 py-1.5 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm"
           >
             Book Now
           </button>
         </div>
       </div>
 
-      {/* Scroll progress bar */}
-      <div className="fixed top-[118px] inset-x-0 z-[60] h-[3px] bg-stone-100">
-        <div
-          className="h-full bg-gradient-to-r from-indigo-500 to-sky-400 transition-[width] duration-75 ease-out"
-          style={{ width: `${scrollProgress}%` }}
-        />
-      </div>
-
       {/* Hero */}
-      <div className="relative h-[90vh] md:h-[100vh] min-h-[500px] overflow-hidden">
+      <div className="relative h-[52svh] min-h-[360px] max-h-[520px] overflow-hidden md:h-[calc(100vh-118px)] md:max-h-none md:min-h-[620px]">
         <DestinationHeroSlider destination={d} />
         {/* Breadcrumb */}
-        <div className="absolute top-6 left-6 md:top-8 md:left-10 flex items-center gap-2 text-white/80 text-sm font-medium bg-black/40 backdrop-blur-md px-5 py-2 rounded-full border border-white/10 z-20">
+        <div className="absolute top-4 left-4 right-4 sm:right-auto md:top-8 md:left-10 flex max-w-[calc(100%-2rem)] items-center gap-2 overflow-x-auto whitespace-nowrap text-white/80 text-xs sm:text-sm font-medium bg-black/40 backdrop-blur-md px-4 sm:px-5 py-2 rounded-full border border-white/10 z-20">
           <span>Home</span>
           <span className="opacity-50">/</span>
           <span>India</span>
@@ -3001,20 +3027,20 @@ function DestinationPageInner({ destination }: { destination: DestinationData })
         </div>
 
         {/* Hero Content */}
-        <div className="absolute bottom-16 left-0 right-0 px-6 md:px-12 md:bottom-24 z-20 pointer-events-none">
+        <div className="absolute bottom-10 left-0 right-0 px-4 sm:px-6 md:px-12 md:bottom-20 z-20 pointer-events-none">
           <div className="max-w-2xl text-left pointer-events-auto">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md border border-white/20 text-white text-[10px] uppercase tracking-wider font-bold mb-4 shadow-sm">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
               {d.country} — {d.region}
             </div>
-            <h1 className="text-4xl md:text-6xl font-extrabold text-white leading-[1.1] tracking-tight mb-2 drop-shadow-lg">
+            <h1 className="text-3xl sm:text-4xl md:text-6xl font-extrabold text-white leading-[1.1] tracking-tight mb-2 drop-shadow-lg">
               {d.name}
             </h1>
-            <p className="text-base md:text-lg text-white/90 font-medium mb-4 drop-shadow-md">
+            <p className="text-sm sm:text-base md:text-lg text-white/90 font-medium mb-4 drop-shadow-md">
               {d.tagline || d.about.summary}
             </p>
-            <div className="flex items-center gap-4 text-white mb-8">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-white">
+              <div className="flex min-w-0 items-center gap-2">
                 <div className="flex gap-0.5">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <svg key={i} className="w-4 h-4 text-amber-400 fill-amber-400 drop-shadow-sm" viewBox="0 0 20 20">
@@ -3032,7 +3058,7 @@ function DestinationPageInner({ destination }: { destination: DestinationData })
         </div>
 
         {/* Hero save/share floating pill */}
-        <div className="absolute top-6 right-10 flex items-center gap-2">
+        <div className="absolute top-6 right-10 hidden md:flex items-center gap-2">
           <button
             onClick={() => setShareOpen(true)}
             className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/15 backdrop-blur-md border border-white/25 text-white text-sm font-medium hover:bg-white/25 transition-colors"
@@ -3061,7 +3087,7 @@ function DestinationPageInner({ destination }: { destination: DestinationData })
         </div>
 
         {/* Floating scroll hint */}
-        <div className="absolute bottom-10 right-10 flex flex-col items-center gap-2 text-white/50 text-xs">
+        <div className="absolute bottom-10 right-10 hidden md:flex flex-col items-center gap-2 text-white/50 text-xs">
           <div className="w-6 h-9 rounded-full border border-white/30 flex items-start justify-center p-1">
             <div className="w-1 h-2 rounded-full bg-white/60 animate-bounce" />
           </div>
@@ -3070,41 +3096,41 @@ function DestinationPageInner({ destination }: { destination: DestinationData })
       </div>
 
       {/* Booking Bar */}
-      <div className="sticky top-[80px] z-40 max-w-6xl mx-auto px-6 -mt-12 mb-10">
-        <div className="bg-white rounded-[2rem] shadow-[0_8px_30px_rgba(0,0,0,0.12)] p-2 md:pl-8 md:pr-4 flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2 flex-1 min-w-[180px]">
+      <div className="relative z-10 mx-auto -mt-6 mb-8 w-full max-w-6xl px-4 sm:px-6 md:-mt-10 md:mb-10">
+        <div className="grid w-full grid-cols-1 gap-3 rounded-3xl bg-white p-4 shadow-[0_8px_30px_rgba(0,0,0,0.12)] sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center lg:gap-4 lg:rounded-[2rem] lg:py-3 lg:pl-8 lg:pr-4">
+          <div className="flex min-w-0 items-center gap-2 rounded-2xl border border-stone-100 bg-stone-50 px-3 py-3 lg:flex-1 lg:min-w-[180px] lg:border-0 lg:bg-transparent lg:px-0 lg:py-0">
             <svg className="w-4 h-4 text-stone-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
-            <div>
+            <div className="min-w-0 flex-1">
               <div className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider">Check In</div>
               <input
                 type="date"
                 value={startDate}
                 min={dateOffset(0)}
                 onChange={e => handleStartDate(e.target.value)}
-                className="text-sm font-medium text-stone-800 bg-transparent border-none outline-none cursor-pointer"
+                className="w-full min-w-0 text-sm font-medium text-stone-800 bg-transparent border-none outline-none cursor-pointer"
               />
             </div>
           </div>
-          <div className="w-px h-8 bg-stone-100" />
-          <div className="flex items-center gap-2 flex-1 min-w-[180px]">
+          <div className="hidden h-8 w-px bg-stone-100 lg:block" />
+          <div className="flex min-w-0 items-center gap-2 rounded-2xl border border-stone-100 bg-stone-50 px-3 py-3 lg:flex-1 lg:min-w-[180px] lg:border-0 lg:bg-transparent lg:px-0 lg:py-0">
             <svg className="w-4 h-4 text-stone-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
-            <div>
+            <div className="min-w-0 flex-1">
               <div className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider">Check Out</div>
               <input
                 type="date"
                 value={endDate}
                 min={nextDate(startDate)}
                 onChange={e => handleEndDate(e.target.value)}
-                className="text-sm font-medium text-stone-800 bg-transparent border-none outline-none cursor-pointer"
+                className="w-full min-w-0 text-sm font-medium text-stone-800 bg-transparent border-none outline-none cursor-pointer"
               />
             </div>
           </div>
-          <div className="w-px h-8 bg-stone-100" />
-          <div className="flex items-center gap-2">
+          <div className="hidden h-8 w-px bg-stone-100 lg:block" />
+          <div className="flex min-w-0 items-center gap-2 rounded-2xl border border-stone-100 bg-stone-50 px-3 py-3 sm:col-span-2 lg:col-span-1 lg:border-0 lg:bg-transparent lg:px-0 lg:py-0">
             <svg className="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
@@ -3119,12 +3145,12 @@ function DestinationPageInner({ destination }: { destination: DestinationData })
           </div>
           <button
             onClick={() => openTripBooking()}
-            className="ml-auto px-6 py-2.5 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors shadow-sm whitespace-nowrap"
+            className="w-full rounded-2xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 sm:col-span-2 lg:col-span-1 lg:ml-auto lg:w-auto lg:rounded-full lg:py-2.5"
           >
             Search Packages
           </button>
           {dateError && (
-            <div className="basis-full rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-600">
+            <div className="rounded-xl bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-600 sm:col-span-2 lg:basis-full">
               {dateError}
             </div>
           )}
@@ -3132,8 +3158,8 @@ function DestinationPageInner({ destination }: { destination: DestinationData })
       </div>
 
       {/* Section Nav */}
-      <div className="sticky top-[118px] z-30 bg-white/95 backdrop-blur-sm border-b border-stone-100">
-        <div className="max-w-6xl mx-auto px-8">
+      <div className="relative z-10 bg-white/95 backdrop-blur-sm border-b border-stone-100">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 md:px-8">
           <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
             {([
               { id: "overview", label: "Overview" },
@@ -3160,7 +3186,7 @@ function DestinationPageInner({ destination }: { destination: DestinationData })
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-8 py-14 space-y-20">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8 py-10 md:py-14 space-y-14 md:space-y-20">
 
         <div id="section-overview">
         {/* Highlights strip */}
@@ -3180,7 +3206,7 @@ function DestinationPageInner({ destination }: { destination: DestinationData })
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <div>
             <div className="text-xs font-semibold text-indigo-500 uppercase tracking-widest mb-3">{d.about.label}</div>
-            <h2 className="text-4xl font-bold text-stone-900 leading-tight mb-5">
+            <h2 className="text-2xl font-bold text-stone-900 leading-tight mb-5 sm:text-3xl md:text-4xl">
               {d.about.heading}
             </h2>
             <p className="text-stone-500 leading-relaxed mb-5">
@@ -3204,7 +3230,7 @@ function DestinationPageInner({ destination }: { destination: DestinationData })
                 className={`overflow-hidden rounded-2xl cursor-pointer group ${i === 0 ? "row-span-2" : ""}`}
                 onClick={() => setActiveGallery(img)}
               >
-                <img
+                <SafeImage
                   src={img}
                   alt=""
                   className={`w-full object-cover group-hover:scale-105 transition-transform duration-500 ${i === 0 ? "h-full min-h-[280px]" : "h-36"}`}
@@ -3219,19 +3245,19 @@ function DestinationPageInner({ destination }: { destination: DestinationData })
         <div id="section-gallery">
         {/* Photo Gallery */}
         <div>
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between gap-4 mb-6">
             <div>
               <div className="text-xs font-semibold text-indigo-500 uppercase tracking-widest mb-1">Gallery</div>
-              <h2 className="text-3xl font-bold text-stone-900">Captured Moments</h2>
+              <h2 className="text-2xl font-bold text-stone-900 sm:text-3xl">Captured Moments</h2>
             </div>
-            <button className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1">
+            <button className="hidden text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors sm:flex items-center gap-1">
               View all photos
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </button>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {d.gallery.map((img, i) => (
               <div
                 key={i}
@@ -3241,7 +3267,7 @@ function DestinationPageInner({ destination }: { destination: DestinationData })
                 {isVideoUrl(img) ? (
                   <video src={img} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" muted loop autoPlay playsInline />
                 ) : (
-                  <img src={img} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                  <SafeImage src={img} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                 )}
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center">
                   <svg className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3258,23 +3284,23 @@ function DestinationPageInner({ destination }: { destination: DestinationData })
         <div id="section-activities">
         {/* Activities */}
         <div>
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between gap-4 mb-8">
             <div>
               <div className="text-xs font-semibold text-indigo-500 uppercase tracking-widest mb-1">Experiences</div>
-              <h2 className="text-3xl font-bold text-stone-900">Things to Do</h2>
+              <h2 className="text-2xl font-bold text-stone-900 sm:text-3xl">Things to Do</h2>
             </div>
-            <button className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1">
+            <button className="hidden text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors sm:flex items-center gap-1">
               All activities
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </button>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+          <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 md:mx-0 md:grid md:grid-cols-4 md:gap-5 md:overflow-visible md:px-0 md:pb-0">
             {d.activities.map((act) => (
-              <div key={act.title} onClick={() => setSelectedActivity(act)} className="rounded-2xl overflow-hidden bg-white border border-stone-100 shadow-sm hover:shadow-lg transition-shadow group cursor-pointer">
-                <div className="relative overflow-hidden h-44">
-                  <img src={act.image} alt={act.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+              <div key={act.title} onClick={() => setSelectedActivity(act)} className="w-[240px] shrink-0 snap-start rounded-2xl overflow-hidden bg-white border border-stone-100 shadow-sm hover:shadow-lg transition-shadow group cursor-pointer md:w-auto">
+                <div className="relative aspect-[4/3] overflow-hidden">
+                  <SafeImage src={act.image} alt={act.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   {act.badge && (
                     <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-sm text-[10px] font-bold text-stone-700 shadow-sm">
                       {act.badge}
@@ -3285,15 +3311,15 @@ function DestinationPageInner({ destination }: { destination: DestinationData })
                   </div>
                 </div>
                 <div className="p-4">
-                  <h3 className="font-bold text-stone-900 text-sm mb-2 leading-snug">{act.title}</h3>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-stone-400 flex items-center gap-1">
+                  <h3 className="line-clamp-2 min-h-[2.5rem] font-bold text-stone-900 text-sm mb-2 leading-snug">{act.title}</h3>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="min-w-0 truncate text-xs text-stone-400 flex items-center gap-1">
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       {act.duration}
                     </span>
-                    <span className="font-bold text-indigo-600 text-sm">From {act.price}</span>
+                    <span className="shrink-0 font-bold text-indigo-600 text-sm">From {act.price}</span>
                   </div>
                 </div>
               </div>
@@ -3306,38 +3332,38 @@ function DestinationPageInner({ destination }: { destination: DestinationData })
         <div id="section-hotels">
         {/* Hotels */}
         <div>
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between gap-4 mb-8">
             <div>
               <div className="text-xs font-semibold text-indigo-500 uppercase tracking-widest mb-1">Accommodation</div>
-              <h2 className="text-3xl font-bold text-stone-900">Where to Stay</h2>
+              <h2 className="text-2xl font-bold text-stone-900 sm:text-3xl">Where to Stay</h2>
             </div>
-            <button className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1">
+            <button className="hidden text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors sm:flex items-center gap-1">
               See all hotels
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </button>
           </div>
-          <div className="grid grid-cols-3 gap-5">
+          <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 md:mx-0 md:grid md:grid-cols-3 md:gap-5 md:overflow-visible md:px-0 md:pb-0">
             {d.hotels.map((h) => (
-              <div key={h.name} onClick={() => openTripBooking(h)} className="rounded-2xl overflow-hidden bg-white border border-stone-100 shadow-sm hover:shadow-lg transition-shadow group cursor-pointer">
-                <div className="relative overflow-hidden h-52">
-                  <img src={h.image} alt={h.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+              <div key={h.name} onClick={() => openTripBooking(h)} className="w-[250px] shrink-0 snap-start rounded-2xl overflow-hidden bg-white border border-stone-100 shadow-sm hover:shadow-lg transition-shadow group cursor-pointer md:w-auto">
+                <div className="relative aspect-[4/3] overflow-hidden">
+                  <SafeImage src={h.image} alt={h.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-sm text-[10px] font-semibold text-stone-700 shadow-sm">
                     {h.tag}
                   </div>
                 </div>
                 <div className="p-5">
                   <div className="flex items-start justify-between mb-1">
-                    <h3 className="font-bold text-stone-900 text-sm leading-snug">{h.name}</h3>
+                    <h3 className="line-clamp-2 min-h-[2.5rem] font-bold text-stone-900 text-sm leading-snug">{h.name}</h3>
                   </div>
                   <StarRating stars={h.stars} />
-                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-stone-100">
-                    <div>
+                  <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-stone-100">
+                    <div className="min-w-0">
                       <span className="text-xl font-extrabold text-stone-900">{h.price}</span>
                       <span className="text-xs text-stone-400">{h.perNight}</span>
                     </div>
-                    <button onClick={e => { e.stopPropagation(); openTripBooking(h); }} className="px-3 py-1.5 rounded-full border border-indigo-200 text-indigo-600 text-xs font-semibold hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-colors">
+                    <button onClick={e => { e.stopPropagation(); openTripBooking(h); }} className="shrink-0 px-3 py-1.5 rounded-full border border-indigo-200 text-indigo-600 text-xs font-semibold hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-colors">
                       Book
                     </button>
                   </div>
@@ -3370,21 +3396,21 @@ function DestinationPageInner({ destination }: { destination: DestinationData })
 
         {/* CTA Banner */}
         <div className="relative rounded-3xl overflow-hidden">
-          <img
-            src={d.heroImage}
-            alt={d.name}
-            className="absolute inset-0 w-full h-full object-cover"
-          />
+            <SafeImage
+              src={d.heroImage}
+              alt={d.name}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
           <div className="absolute inset-0 bg-gradient-to-r from-indigo-900/90 via-indigo-800/80 to-transparent" />
-          <div className="relative px-14 py-16 max-w-lg">
+          <div className="relative max-w-lg px-5 py-10 sm:px-8 md:px-14 md:py-16">
             <div className="text-xs font-semibold text-indigo-300 uppercase tracking-widest mb-3">Limited Offer</div>
-            <h2 className="text-4xl font-extrabold text-white leading-tight mb-4">
+            <h2 className="text-2xl font-extrabold text-white leading-tight mb-4 sm:text-3xl md:text-4xl">
               {d.about.ctaHeading}
             </h2>
             <p className="text-indigo-200 mb-8 leading-relaxed">
               {d.about.ctaDesc}
             </p>
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row">
               <button onClick={() => openTripBooking()} className="px-7 py-3.5 rounded-full bg-white text-indigo-700 font-bold text-sm hover:bg-indigo-50 transition-colors shadow-lg">
                 Build My Trip
               </button>
@@ -3578,11 +3604,12 @@ function DestinationPageInner({ destination }: { destination: DestinationData })
               playsInline
             />
           ) : (
-            <img
+            <SafeImage
               src={activeGallery}
               alt=""
               className="max-w-5xl max-h-[85vh] object-contain rounded-xl shadow-2xl"
               onClick={e => e.stopPropagation()}
+              loading="eager"
             />
           )}
         </div>
