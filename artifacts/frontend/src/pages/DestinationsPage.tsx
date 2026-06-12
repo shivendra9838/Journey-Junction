@@ -4,6 +4,7 @@ import { apiFetch } from "@/lib/api";
 import Navbar from "@/components/Navbar";
 import ProfileDropdown from "@/components/ProfileDropdown";
 import SignInModal from "@/components/SignInModal";
+import LoadingState from "@/components/LoadingState";
 
 interface DestinationSummary {
   id: string;
@@ -183,9 +184,7 @@ export default function DestinationsPage({ stateSlug }: { stateSlug?: string }) 
         </section>
 
         {loading ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-80 rounded-3xl bg-white border border-stone-100 animate-pulse" />)}
-          </div>
+          <LoadingState message="Loading destinations..." />
         ) : visible.length === 0 ? (
           <div className="bg-white border border-dashed border-stone-200 rounded-3xl py-20 text-center">
             <p className="text-lg font-bold text-stone-700">No destinations found</p>

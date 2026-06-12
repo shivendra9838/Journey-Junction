@@ -13,6 +13,7 @@ import type { Coordinates } from "@/lib/geo";
 import SignInModal from "@/components/SignInModal";
 import ProfileDropdown from "@/components/ProfileDropdown";
 import DynamicBookingModal from "@/components/booking/DynamicBookingModal";
+import LoadingState from "@/components/LoadingState";
 
 const OpenStreetMap = lazy(() => import("../components/maps/OpenStreetMap"));
 
@@ -2428,7 +2429,7 @@ export default function DestinationPage({ destinationId }: { destinationId: stri
   }, [destinationId]);
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-stone-50"><div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"/></div>;
+    return <LoadingState fullscreen message="Loading destination details..." />;
   }
   if (!destination) {
     return <div className="min-h-screen flex items-center justify-center bg-stone-50 text-stone-500 font-medium">Destination not found</div>;

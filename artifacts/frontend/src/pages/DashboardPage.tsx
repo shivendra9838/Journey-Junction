@@ -3,9 +3,9 @@ import { useLocation } from "wouter";
 import { useUser } from "@/context/UserContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { apiFetch } from "@/lib/api";
-import { getDestinationById } from "@/data/destinations";
-import ProfileDropdown from "@/components/ProfileDropdown";
+import Navbar from "@/components/Navbar";
 import SignInModal from "@/components/SignInModal";
+import LoadingState from "@/components/LoadingState";
 
 interface MyReview {
   id: string;
@@ -37,53 +37,14 @@ interface TransportBooking {
   vehicle?: { name?: string; type?: string };
 }
 
-const AVATAR_GRADIENTS = [
-  "from-indigo-500 to-sky-400",
-  "from-violet-500 to-purple-400",
-  "from-rose-500 to-pink-400",
-  "from-emerald-500 to-teal-400",
-  "from-amber-500 to-orange-400",
-  "from-sky-500 to-cyan-400",
-];
-
-function getGradient(name: string) {
-  const code = name.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  return AVATAR_GRADIENTS[code % AVATAR_GRADIENTS.length];
-}
-
-function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  return (parts[0]?.[0] ?? "?").toUpperCase();
-}
-
-function WandrLogo({ className = "" }: { className?: string }) {
-  return (
-    <img src="/logo.png" alt="Journey Junction" className={className} />
-  );
-}
-
-function StatTile({ label, value, icon, tone }: { label: string; value: string | number; icon: string; tone: string }) {
-  return (
-    <div className="bg-white border border-stone-100 rounded-2xl p-5 shadow-sm">
-      <div className={`w-11 h-11 rounded-xl ${tone} flex items-center justify-center text-xl mb-4`}>{icon}</div>
-      <div className="text-2xl font-extrabold text-stone-900">{value}</div>
-      <div className="text-xs text-stone-400 font-medium mt-1">{label}</div>
-    </div>
-  );
-}
-
-function StarRow({ rating }: { rating: number }) {
-  return (
-    <div className="flex gap-0.5">
-      {[1, 2, 3, 4, 5].map(n => (
-        <svg key={n} className={`w-3.5 h-3.5 ${n <= rating ? "fill-amber-400 text-amber-400" : "fill-stone-200 text-stone-200"}`} viewBox="0 0 20 20">
-          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-        </svg>
-      ))}
-    </div>
-  );
-}
+type RecommendedDestination = {
+  id: string;
+  name: string;
+  state: string;
+  image: string;
+  rating: number;
+  tag: string;
+};
 
 const INR = new Intl.NumberFormat("en-IN", {
   style: "currency",
@@ -91,15 +52,23 @@ const INR = new Intl.NumberFormat("en-IN", {
   maximumFractionDigits: 0,
 });
 
-const PAYMENT_METHODS = ["UPI", "Debit/Credit Card", "Net Banking", "Wallet"];
+const FALLBACK_IMAGE = "/images/unsplash-be41aa2e4372.jpg";
 
-function parseINR(value: string) {
-  const numeric = value.replace(/[^0-9]/g, "");
-  return numeric ? Number.parseInt(numeric, 10) : 0;
-}
+const RECOMMENDED_DESTINATIONS: RecommendedDestination[] = [
+  { id: "goa", name: "Goa", state: "Goa", image: "/images/unsplash-be41aa2e4372.jpg", rating: 4.8, tag: "Beach escape" },
+  { id: "kerala", name: "Kerala", state: "Kerala", image: "/images/unsplash-451710d2942a.jpg", rating: 4.9, tag: "Backwaters" },
+  { id: "kashmir", name: "Kashmir", state: "Jammu & Kashmir", image: "/images/unsplash-1925bee154dc.jpg", rating: 4.9, tag: "Mountain retreat" },
+  { id: "rajasthan", name: "Rajasthan", state: "Rajasthan", image: "/images/unsplash-a6836391f181.jpg", rating: 4.7, tag: "Royal heritage" },
+];
 
 function formatINR(value: number) {
   return INR.format(value);
+}
+
+function getInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return (parts[0]?.[0] ?? "?").toUpperCase();
 }
 
 function daysUntil(date: string) {
@@ -113,8 +82,29 @@ function tripCountdownLabel(booking: TransportBooking) {
   const startDiff = daysUntil(booking.checkInDate);
   const endDiff = daysUntil(booking.checkOutDate);
   if (startDiff > 0) return `${startDiff} day${startDiff === 1 ? "" : "s"} left`;
-  if (endDiff >= 0) return "Trip in progress";
-  return "Trip completed";
+  if (endDiff >= 0) return "In progress";
+  return "Completed";
+}
+
+function SafeImage({ src, alt, className }: { src?: string; alt: string; className: string }) {
+  const [currentSrc, setCurrentSrc] = useState(src || FALLBACK_IMAGE);
+
+  useEffect(() => {
+    setCurrentSrc(src || FALLBACK_IMAGE);
+  }, [src]);
+
+  return (
+    <img
+      src={currentSrc}
+      alt={alt}
+      loading="lazy"
+      decoding="async"
+      className={className}
+      onError={() => {
+        if (currentSrc !== FALLBACK_IMAGE) setCurrentSrc(FALLBACK_IMAGE);
+      }}
+    />
+  );
 }
 
 export default function DashboardPage() {
@@ -126,7 +116,7 @@ export default function DashboardPage() {
   const [bookings, setBookings] = useState<TransportBooking[]>([]);
   const [bookingsLoading, setBookingsLoading] = useState(true);
   const [signInOpen, setSignInOpen] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState(PAYMENT_METHODS[0]);
+  const [paymentsOpen, setPaymentsOpen] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -160,7 +150,7 @@ export default function DashboardPage() {
     }
 
     void loadDashboard();
-    const interval = window.setInterval(loadDashboard, 10000);
+    const interval = window.setInterval(loadDashboard, 30000);
     const onFocus = () => void loadDashboard();
     window.addEventListener("focus", onFocus);
     return () => {
@@ -179,305 +169,228 @@ export default function DashboardPage() {
   }, [user, authLoading]);
 
   const paidBookings = useMemo(() => bookings.filter(booking => booking.paymentStatus === "paid"), [bookings]);
-  const paymentSummary = useMemo(() => {
-    const destinationTotal = paidBookings.reduce((sum, booking) => sum + Number(booking.stepPrices?.destination ?? 0), 0);
-    const transportTotal = paidBookings.reduce((sum, booking) => sum + Number(booking.stepPrices?.pickup ?? 0) + Number(booking.stepPrices?.vehicle ?? 0), 0);
-    const serviceTotal = paidBookings.reduce((sum, booking) => sum + Number(booking.stepPrices?.service ?? 0), 0);
-    const total = paidBookings.reduce((sum, booking) => sum + Number(booking.totalAmount || 0), 0);
+  const pendingBookings = useMemo(() => bookings.filter(booking => booking.paymentStatus !== "paid"), [bookings]);
+  const upcomingTrip = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    return bookings
+      .filter(booking => new Date(`${booking.checkOutDate}T00:00:00`) >= now)
+      .sort((a, b) => new Date(a.checkInDate).getTime() - new Date(b.checkInDate).getTime())[0];
+  }, [bookings]);
+  const paymentTotal = useMemo(() => paidBookings.reduce((sum, booking) => sum + Number(booking.totalAmount || 0), 0), [paidBookings]);
+  const latestPaidBookings = paidBookings.slice(0, 4);
 
-    return {
-      destinationTotal,
-      transportTotal,
-      serviceTotal,
-      total,
-    };
-  }, [paidBookings]);
+  if (authLoading) return <LoadingState fullscreen message="Loading your dashboard..." />;
+  if (!user) return null;
 
-  if (authLoading || !user) return null;
-
-  const gradient = getGradient(user.name);
-  const avgRating = reviews.length
-    ? Math.round((reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length) * 10) / 10
-    : "—";
-  const bookedDestinationCount = paidBookings.length;
-  const bookedServiceCount = paidBookings.reduce((sum, booking) => sum + (Number(booking.stepPrices?.service ?? 0) > 0 ? 1 : 0), 0);
-  const savedPreview = destinations.slice(0, 3);
-  const reviewPreview = reviews.slice(0, 3);
-  const scrollToPayments = () => document.getElementById("payments")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const firstName = user.name.split(" ")[0] || "Traveller";
+  const savedDestinations = destinations.slice(0, 8);
+  const recentReviews = reviews.slice(0, 3);
+  const statItems = [
+    { label: "Wishlist", value: totalCount, icon: "M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z", tone: "text-rose-500 bg-rose-50" },
+    { label: "Bookings", value: bookings.length, icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2", tone: "text-indigo-600 bg-indigo-50" },
+    { label: "Reviews", value: reviews.length, icon: "M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.889a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.977-2.889a1 1 0 00-1.176 0l-3.977 2.889c-.783.57-1.838-.196-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118L3.075 10.1c-.783-.57-.38-1.81.588-1.81h4.915a1 1 0 00.95-.69l1.521-4.674z", tone: "text-amber-600 bg-amber-50" },
+    { label: "Saved Places", value: destinations.length, icon: "M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z", tone: "text-sky-600 bg-sky-50" },
+  ];
 
   return (
-    <div className="min-h-screen bg-[#f8f5f0] text-stone-800">
-      <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-stone-100">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <button onClick={() => navigate("/")} className="flex items-center">
-            <WandrLogo className="h-[32px] md:h-[36px] w-auto object-contain flex-shrink-0 scale-[1.5] md:scale-[1.8] origin-left" />
+    <div className="min-h-screen overflow-x-hidden bg-[#f8f5f0] text-stone-900">
+      <Navbar />
+
+      <main className="mx-auto max-w-7xl px-4 pb-24 pt-20 md:px-8 md:pt-24">
+        <section className="flex h-[96px] items-center justify-between gap-4 rounded-3xl bg-white/90 p-4 shadow-sm ring-1 ring-stone-100 backdrop-blur">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-600 to-sky-400 text-base font-black text-white shadow-sm">
+              {getInitials(user.name)}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-lg font-black tracking-tight text-stone-950">Welcome back, {firstName}</p>
+              <p className="mt-0.5 truncate text-sm font-medium text-stone-500">Ready for your next adventure?</p>
+            </div>
+          </div>
+          <button aria-label="Notifications" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-stone-100 bg-stone-50 text-stone-700 transition active:scale-95">
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0a3 3 0 01-6 0" />
+            </svg>
           </button>
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate("/")} className="text-sm font-semibold text-stone-500 hover:text-stone-900">Explore</button>
-            <button onClick={() => navigate("/plan-trip")} className="text-sm font-semibold text-indigo-600 hover:text-indigo-800">Plan Trip</button>
-            <ProfileDropdown onSignInClick={() => setSignInOpen(true)} />
-          </div>
-        </div>
-      </nav>
-
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
-        <section className="grid lg:grid-cols-[1.4fr_0.9fr] gap-6">
-          <div className={`rounded-3xl bg-gradient-to-br ${gradient} p-8 text-white shadow-sm overflow-hidden relative`}>
-            <div className="absolute inset-0 opacity-15" style={{ backgroundImage: "radial-gradient(circle at 20% 20%, white 1px, transparent 1px)", backgroundSize: "34px 34px" }} />
-            <div className="relative flex items-start justify-between gap-6">
-              <div>
-                <p className="text-white/70 text-sm font-semibold mb-2">User Dashboard</p>
-                <h1 className="text-4xl font-extrabold leading-tight">Welcome back, {user.name.split(" ")[0]}</h1>
-                <p className="text-white/75 mt-3 max-w-xl">Track your saved places, reviews, hotels, activities, and trip planning progress from one place.</p>
-              </div>
-              <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center text-2xl font-extrabold ring-4 ring-white/20 flex-shrink-0">
-                {getInitials(user.name)}
-              </div>
-            </div>
-            <div className="relative mt-8 flex flex-wrap gap-3">
-              <button onClick={() => navigate("/wishlist")} className="px-5 py-3 rounded-full bg-white text-stone-900 text-sm font-bold hover:shadow-lg transition-shadow">View Wishlist</button>
-              <button onClick={() => navigate("/profile")} className="px-5 py-3 rounded-full bg-white/15 border border-white/25 text-white text-sm font-bold hover:bg-white/20 transition-colors">Edit Profile</button>
-              {user.isAdmin && (
-                <button onClick={() => navigate("/admin")} className="px-5 py-3 rounded-full bg-black/20 border border-white/20 text-white text-sm font-bold hover:bg-black/30 transition-colors">Admin Panel</button>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-white border border-stone-100 rounded-3xl p-6 shadow-sm">
-            <p className="text-sm font-bold text-stone-900 mb-4">Account</p>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-sm text-stone-400">Name</span>
-                <span className="text-sm font-semibold text-stone-800 text-right">{user.name}</span>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-sm text-stone-400">Email</span>
-                <span className="text-sm font-semibold text-stone-800 text-right truncate">{user.email}</span>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-sm text-stone-400">Role</span>
-                <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${user.isAdmin ? "bg-violet-50 text-violet-700" : "bg-indigo-50 text-indigo-700"}`}>
-                  {user.isAdmin ? "Admin" : "Explorer"}
-                </span>
-              </div>
-            </div>
-            <button onClick={() => navigate("/profile")} className="mt-6 w-full py-3 rounded-xl border border-stone-200 text-sm font-bold text-stone-700 hover:bg-stone-50 transition-colors">Manage Account</button>
-          </div>
         </section>
 
-        <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatTile label="Saved Items" value={totalCount} icon="♥" tone="bg-rose-50 text-rose-600" />
-          <StatTile label="Destinations" value={bookedDestinationCount} icon="📍" tone="bg-sky-50 text-sky-600" />
-          <StatTile label="Activities + Hotels" value={bookedServiceCount} icon="🎟" tone="bg-emerald-50 text-emerald-600" />
-          <StatTile label="Avg Review Rating" value={avgRating} icon="★" tone="bg-amber-50 text-amber-600" />
+        <section className="-mx-4 mt-6 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2">
+          {statItems.map(item => (
+            <div key={item.label} className="h-[90px] w-[120px] shrink-0 snap-start rounded-3xl border border-stone-100 bg-white p-4 shadow-sm">
+              <div className={`flex h-9 w-9 items-center justify-center rounded-2xl ${item.tone}`}>
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
+                </svg>
+              </div>
+              <div className="mt-2 text-xl font-black leading-none">{item.value}</div>
+              <div className="mt-1 text-[11px] font-bold text-stone-400">{item.label}</div>
+            </div>
+          ))}
         </section>
 
-        <section className="bg-white border border-stone-100 rounded-3xl p-6 shadow-sm">
-          <div className="flex items-center justify-between gap-4 mb-5">
-            <div>
-              <h2 className="text-xl font-extrabold text-stone-900">My Bookings</h2>
-              <p className="text-sm text-stone-400 mt-0.5">Stripe-paid trips appear here immediately after successful payment.</p>
-            </div>
-            <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-extrabold text-emerald-700">{bookings.length} total</span>
-          </div>
-
+        <DashboardSection title="Upcoming trip" className="mt-6">
           {bookingsLoading ? (
-            <div className="space-y-3">
-              {[1, 2].map(i => <div key={i} className="h-24 rounded-2xl bg-stone-50 animate-pulse" />)}
-            </div>
-          ) : bookings.length === 0 ? (
-            <EmptyPanel title="No bookings yet" text="Book a destination and complete Stripe Checkout to see your trip here." action="Explore" onAction={() => navigate("/")} />
+            <TripSkeleton />
+          ) : upcomingTrip ? (
+            <TripCard booking={upcomingTrip} onView={() => navigate(`/destination/${upcomingTrip.destinationSlug || upcomingTrip.destinationName.toLowerCase()}`)} />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[820px] text-left text-sm">
-                <thead>
-                  <tr className="border-b border-stone-100 text-xs uppercase tracking-wide text-stone-400">
-                    <th className="py-3 pr-4">Destination</th>
-                    <th className="py-3 pr-4">Dates</th>
-                    <th className="py-3 pr-4">Countdown</th>
-                    <th className="py-3 pr-4">Transport</th>
-                    <th className="py-3 pr-4">Amount Paid</th>
-                    <th className="py-3 pr-4">Payment</th>
-                    <th className="py-3 pr-4">Booking</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bookings.map(booking => (
-                    <tr key={booking.id} className="border-b border-stone-50 last:border-0">
-                      <td className="py-4 pr-4">
-                        <p className="font-extrabold text-stone-900">{booking.destinationName}</p>
-                        <p className="mt-0.5 text-xs text-stone-400">{booking.bookingReference}</p>
-                      </td>
-                      <td className="py-4 pr-4 text-stone-600">{booking.checkInDate} to {booking.checkOutDate}</td>
-                      <td className="py-4 pr-4 text-stone-600">{tripCountdownLabel(booking)}</td>
-                      <td className="py-4 pr-4 text-stone-600">{booking.travelMode} - {booking.vehicle?.name ?? "Vehicle"}</td>
-                      <td className="py-4 pr-4 font-extrabold text-stone-900">{formatINR(booking.totalAmount)}</td>
-                      <td className="py-4 pr-4">
-                        <span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${booking.paymentStatus === "paid" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
-                          {booking.paymentStatus}
-                        </span>
-                      </td>
-                      <td className="py-4 pr-4">
-                        <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-extrabold text-indigo-700">{booking.status}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <EmptyState
+              title="No trips yet"
+              text="Let's plan your first adventure."
+              action="Plan your first trip"
+              onAction={() => navigate("/plan-trip")}
+            />
           )}
-        </section>
+        </DashboardSection>
 
-        <section className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-white border border-stone-100 rounded-3xl p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h2 className="text-xl font-extrabold text-stone-900">Saved Destinations</h2>
-                <p className="text-sm text-stone-400 mt-0.5">{destinations.length} places in your wishlist</p>
-              </div>
-              <button onClick={() => navigate("/wishlist")} className="text-sm font-bold text-indigo-600 hover:text-indigo-800">View all</button>
-            </div>
-
-            {savedPreview.length === 0 ? (
-              <EmptyPanel title="No saved destinations yet" text="Explore destinations and tap the heart icon to save your favourites." action="Explore" onAction={() => navigate("/")} />
-            ) : (
-              <div className="grid md:grid-cols-3 gap-4">
-                {savedPreview.map(destination => (
-                  <button key={destination.id} onClick={() => navigate(`/destination/${destination.id}`)} className="text-left rounded-2xl overflow-hidden border border-stone-100 bg-stone-50 hover:shadow-md transition-shadow">
-                    <img src={destination.heroImage} alt={destination.name} className="w-full h-32 object-cover" />
-                    <div className="p-4">
-                      <p className="font-bold text-stone-900 truncate">{destination.name}</p>
-                      <p className="text-xs text-stone-400 mt-0.5">{destination.state} · {destination.region}</p>
+        <DashboardSection title="Saved destinations" action="View all" onAction={() => navigate("/wishlist")} className="mt-6">
+          {savedDestinations.length === 0 ? (
+            <EmptyState
+              title="No saved places"
+              text="Start exploring India and save places you love."
+              action="Start exploring"
+              onAction={() => navigate("/")}
+            />
+          ) : (
+            <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-3">
+              {savedDestinations.map(destination => (
+                <button
+                  key={destination.id}
+                  onClick={() => navigate(`/destination/${destination.id}`)}
+                  className="w-[236px] shrink-0 snap-start overflow-hidden rounded-3xl border border-stone-100 bg-white text-left shadow-sm transition active:scale-[0.99]"
+                >
+                  <div className="relative aspect-[4/3] overflow-hidden">
+                    <SafeImage src={destination.heroImage} alt={destination.name} className="h-full w-full object-cover" />
+                    <div className="absolute right-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-black text-stone-900 shadow-sm">
+                      {destination.rating.toFixed(1)}
                     </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="bg-white border border-stone-100 rounded-3xl p-6 shadow-sm">
-            <h2 className="text-xl font-extrabold text-stone-900 mb-5">Quick Actions</h2>
-            <div className="space-y-3">
-              {[
-                { label: "Plan a trip", path: "/plan-trip", tone: "bg-indigo-600 text-white" },
-                { label: "Payments", path: "#payments", tone: "bg-emerald-50 text-emerald-700" },
-                { label: "Browse destinations", path: "/", tone: "bg-stone-100 text-stone-800" },
-                { label: "Open wishlist", path: "/wishlist", tone: "bg-rose-50 text-rose-700" },
-                { label: "Profile settings", path: "/profile", tone: "bg-sky-50 text-sky-700" },
-              ].map(action => (
-                <button key={action.label} onClick={() => action.path === "#payments" ? scrollToPayments() : navigate(action.path)} className={`w-full px-4 py-3 rounded-xl text-sm font-bold text-left ${action.tone} hover:opacity-90 transition-opacity`}>
-                  {action.label}
+                    <div className="absolute left-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur">
+                      <svg className="h-4 w-4 fill-white" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                      </svg>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <p className="truncate text-sm font-black text-stone-950">{destination.name}</p>
+                    <p className="mt-0.5 truncate text-xs font-medium text-stone-500">{destination.state}</p>
+                    <div className="mt-3 inline-flex rounded-full bg-indigo-600 px-4 py-2 text-xs font-black text-white">Explore</div>
+                  </div>
                 </button>
               ))}
             </div>
+          )}
+        </DashboardSection>
+
+        <DashboardSection title="Quick actions" className="mt-6">
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: "Plan Trip", path: "/plan-trip", tone: "bg-indigo-600 text-white", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" },
+              { label: "Wishlist", path: "/wishlist", tone: "bg-rose-50 text-rose-700", icon: "M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682" },
+              { label: "Payments", path: "#payments", tone: "bg-emerald-50 text-emerald-700", icon: "M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2" },
+              { label: "Profile", path: "/profile", tone: "bg-sky-50 text-sky-700", icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0z" },
+            ].map(action => (
+              <button
+                key={action.label}
+                onClick={() => action.path === "#payments" ? document.getElementById("payments")?.scrollIntoView({ behavior: "smooth" }) : navigate(action.path)}
+                className={`min-h-[88px] rounded-3xl p-4 text-left shadow-sm transition active:scale-[0.98] ${action.tone}`}
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={action.icon} />
+                </svg>
+                <p className="mt-3 text-sm font-black">{action.label}</p>
+              </button>
+            ))}
           </div>
-        </section>
+        </DashboardSection>
 
-        <section id="payments" className="grid lg:grid-cols-[1.1fr_0.9fr] gap-6 scroll-mt-24">
-          <div className="bg-white border border-stone-100 rounded-3xl p-6 shadow-sm">
-            <div className="flex items-start justify-between gap-4 mb-6">
-              <div>
-                <h2 className="text-xl font-extrabold text-stone-900">Payments</h2>
-                <p className="text-sm text-stone-400 mt-0.5">Stripe payment history from completed Journey Junction checkouts.</p>
-              </div>
-              <div className="px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-extrabold">INR</div>
-            </div>
-
-            <div className="grid sm:grid-cols-3 gap-3 mb-5">
-              <div className="rounded-2xl bg-stone-50 border border-stone-100 p-4">
-                <p className="text-xs font-bold text-stone-400 uppercase tracking-widest">Destinations</p>
-                <p className="text-2xl font-extrabold text-stone-900 mt-1">{formatINR(paymentSummary.destinationTotal)}</p>
-              </div>
-              <div className="rounded-2xl bg-stone-50 border border-stone-100 p-4">
-                <p className="text-xs font-bold text-stone-400 uppercase tracking-widest">Transport</p>
-                <p className="text-2xl font-extrabold text-stone-900 mt-1">{formatINR(paymentSummary.transportTotal)}</p>
-              </div>
-              <div className="rounded-2xl bg-stone-50 border border-stone-100 p-4">
-                <p className="text-xs font-bold text-stone-400 uppercase tracking-widest">Hotels + Meals</p>
-                <p className="text-2xl font-extrabold text-stone-900 mt-1">{formatINR(paymentSummary.serviceTotal)}</p>
-              </div>
-            </div>
-
-            <div className="space-y-3 rounded-2xl border border-stone-100 p-4">
-              <PaymentLine label="Paid bookings" value={paidBookings.length} plain />
-              <PaymentLine label="Destination total" value={paymentSummary.destinationTotal} />
-              <PaymentLine label="Transport total" value={paymentSummary.transportTotal} />
-              <PaymentLine label="Hotel, meal and services" value={paymentSummary.serviceTotal} />
-              <div className="border-t border-stone-100 pt-3 flex items-center justify-between">
-                <span className="text-sm font-extrabold text-stone-900">Total paid</span>
-                <span className="text-2xl font-extrabold text-indigo-700">{formatINR(paymentSummary.total)}</span>
-              </div>
-            </div>
+        <DashboardSection title="Recommended for you" className="mt-6">
+          <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-3">
+            {RECOMMENDED_DESTINATIONS.map(destination => (
+              <button
+                key={destination.id}
+                onClick={() => navigate(`/destination/${destination.id}`)}
+                className="w-[220px] shrink-0 snap-start overflow-hidden rounded-3xl bg-white text-left shadow-sm ring-1 ring-stone-100"
+              >
+                <div className="relative aspect-[4/3]">
+                  <SafeImage src={destination.image} alt={destination.name} className="h-full w-full object-cover" />
+                  <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-black text-stone-900">{destination.rating}</span>
+                </div>
+                <div className="p-4">
+                  <p className="text-sm font-black text-stone-950">{destination.name}</p>
+                  <p className="mt-1 text-xs font-semibold text-stone-500">{destination.tag}</p>
+                </div>
+              </button>
+            ))}
           </div>
+        </DashboardSection>
 
-          <div className="bg-white border border-stone-100 rounded-3xl p-6 shadow-sm">
-            <h2 className="text-xl font-extrabold text-stone-900 mb-4">Payment History</h2>
-            {paidBookings.length === 0 ? (
-              <EmptyPanel title="No paid bookings yet" text="Complete Stripe Checkout to see your payment history here." action="Explore" onAction={() => navigate("/")} />
-            ) : (
-              <div className="space-y-3">
-                {paidBookings.map(item => (
-                  <div key={item.id} className="rounded-xl bg-stone-50 border border-stone-100 px-4 py-3">
+        <DashboardSection title="Payments" className="mt-6" id="payments">
+          <div className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-stone-100">
+            <div className="grid grid-cols-3 gap-3">
+              <PaymentMetric label="Total Spent" value={formatINR(paymentTotal)} />
+              <PaymentMetric label="Bookings" value={paidBookings.length} />
+              <PaymentMetric label="Pending" value={pendingBookings.length} />
+            </div>
+            <button
+              onClick={() => setPaymentsOpen(open => !open)}
+              className="mt-4 h-12 w-full rounded-2xl bg-stone-950 text-sm font-black text-white"
+            >
+              {paymentsOpen ? "Hide Details" : "View Details"}
+            </button>
+            {paymentsOpen && (
+              <div className="mt-4 space-y-3">
+                {latestPaidBookings.length === 0 ? (
+                  <EmptyState
+                    title="No payments yet"
+                    text="Complete a booking to see payment details."
+                    action="Explore trips"
+                    onAction={() => navigate("/")}
+                    compact
+                  />
+                ) : latestPaidBookings.map(booking => (
+                  <div key={booking.id} className="rounded-2xl bg-stone-50 p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-sm font-bold text-stone-900 truncate">{item.destinationName}</p>
-                        <p className="text-xs text-stone-400 mt-0.5">{new Date(item.paidAt ?? item.createdAt).toLocaleDateString("en-IN")} - {item.paymentStatus}</p>
+                        <p className="truncate text-sm font-black text-stone-900">{booking.destinationName}</p>
+                        <p className="mt-0.5 text-xs text-stone-500">{booking.bookingReference}</p>
                       </div>
-                      <p className="text-sm font-extrabold text-stone-800 whitespace-nowrap">{formatINR(item.totalAmount)}</p>
-                    </div>
-                    <div className="mt-2 rounded-lg bg-white px-3 py-2 text-[10px] text-stone-400 break-all">
-                      Transaction: {item.stripePaymentIntentId || item.stripeCheckoutSessionId || item.bookingReference}
+                      <p className="shrink-0 text-sm font-black text-stone-950">{formatINR(booking.totalAmount)}</p>
                     </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
-        </section>
+        </DashboardSection>
 
-        <section className="grid lg:grid-cols-2 gap-6">
-          <div className="bg-white border border-stone-100 rounded-3xl p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h2 className="text-xl font-extrabold text-stone-900">Recent Reviews</h2>
-                <p className="text-sm text-stone-400 mt-0.5">{reviews.length} reviews written</p>
-              </div>
-              <button onClick={() => navigate("/profile")} className="text-sm font-bold text-indigo-600 hover:text-indigo-800">Profile</button>
+        <DashboardSection title="Travel activity" className="mt-6">
+          {reviewsLoading ? (
+            <div className="grid gap-3">
+              {[1, 2, 3].map(item => <div key={item} className="h-16 animate-pulse rounded-2xl bg-white" />)}
             </div>
-
-            {reviewsLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map(i => <div key={i} className="h-20 rounded-xl bg-stone-50 animate-pulse" />)}
-              </div>
-            ) : reviewPreview.length === 0 ? (
-              <EmptyPanel title="No reviews yet" text="Write a review from any destination page to help other travellers." action="Explore" onAction={() => navigate("/")} />
-            ) : (
-              <div className="space-y-3">
-                {reviewPreview.map(review => {
-                  const destination = getDestinationById(review.destId);
-                  return (
-                    <button key={review.id} onClick={() => navigate(`/destination/${review.destId}`)} className="w-full text-left p-4 rounded-xl bg-stone-50 hover:bg-stone-100 transition-colors">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="font-bold text-stone-900 truncate">{review.title}</p>
-                        <StarRow rating={review.rating} />
-                      </div>
-                      <p className="text-xs text-stone-400 mt-1">{destination?.name ?? review.destId} · {review.tripType}</p>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          <div className="bg-white border border-stone-100 rounded-3xl p-6 shadow-sm">
-            <h2 className="text-xl font-extrabold text-stone-900 mb-5">Wishlist Breakdown</h2>
-            <div className="space-y-4">
-              <BreakdownRow label="Destinations" value={destinations.length} total={Math.max(totalCount, 1)} color="bg-sky-500" />
-              <BreakdownRow label="Activities" value={activities.length} total={Math.max(totalCount, 1)} color="bg-emerald-500" />
-              <BreakdownRow label="Hotels" value={hotels.length} total={Math.max(totalCount, 1)} color="bg-amber-500" />
+          ) : recentReviews.length === 0 ? (
+            <EmptyState
+              title="No reviews yet"
+              text="Share your first travel moment after a trip."
+              action="Browse places"
+              onAction={() => navigate("/")}
+              compact
+            />
+          ) : (
+            <div className="grid gap-3">
+              {recentReviews.map(review => (
+                <button key={review.id} onClick={() => navigate(`/destination/${review.destId}`)} className="rounded-2xl bg-white p-4 text-left shadow-sm ring-1 ring-stone-100">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="truncate text-sm font-black text-stone-950">{review.title}</p>
+                    <span className="shrink-0 text-xs font-black text-amber-600">{review.rating}.0</span>
+                  </div>
+                  <p className="mt-1 line-clamp-1 text-xs font-medium text-stone-500">{review.review}</p>
+                </button>
+              ))}
             </div>
-          </div>
-        </section>
+          )}
+        </DashboardSection>
       </main>
 
       {signInOpen && <SignInModal onClose={() => setSignInOpen(false)} />}
@@ -485,37 +398,112 @@ export default function DashboardPage() {
   );
 }
 
-function PaymentLine({ label, value, plain = false }: { label: string; value: number; plain?: boolean }) {
+function DashboardSection({
+  title,
+  action,
+  onAction,
+  children,
+  className = "",
+  id,
+}: {
+  title: string;
+  action?: string;
+  onAction?: () => void;
+  children: React.ReactNode;
+  className?: string;
+  id?: string;
+}) {
   return (
-    <div className="flex items-center justify-between text-sm">
-      <span className="text-stone-500">{label}</span>
-      <span className="font-bold text-stone-800">{plain ? value : formatINR(value)}</span>
+    <section id={id} className={className}>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-xl font-black tracking-tight text-stone-950">{title}</h2>
+        {action && onAction && (
+          <button onClick={onAction} className="text-sm font-black text-indigo-600">{action}</button>
+        )}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function TripCard({ booking, onView }: { booking: TransportBooking; onView: () => void }) {
+  return (
+    <div className="overflow-hidden rounded-[1.75rem] bg-white shadow-sm ring-1 ring-stone-100">
+      <div className="relative h-44">
+        <SafeImage src={FALLBACK_IMAGE} alt={booking.destinationName} className="h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+        <div className="absolute bottom-4 left-4 right-4 text-white">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/70">{tripCountdownLabel(booking)}</p>
+          <h3 className="mt-1 line-clamp-1 text-2xl font-black">{booking.destinationName}</h3>
+        </div>
+        <span className="absolute right-4 top-4 rounded-full bg-white/90 px-3 py-1 text-xs font-black capitalize text-stone-900">
+          {booking.status}
+        </span>
+      </div>
+      <div className="p-4">
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          <div className="rounded-2xl bg-stone-50 p-3">
+            <p className="text-[10px] font-black uppercase tracking-wide text-stone-400">Dates</p>
+            <p className="mt-1 font-bold text-stone-900">{booking.checkInDate}</p>
+          </div>
+          <div className="rounded-2xl bg-stone-50 p-3">
+            <p className="text-[10px] font-black uppercase tracking-wide text-stone-400">Payment</p>
+            <p className="mt-1 font-bold capitalize text-emerald-700">{booking.paymentStatus}</p>
+          </div>
+        </div>
+        <button onClick={onView} className="mt-4 h-12 w-full rounded-2xl bg-indigo-600 text-sm font-black text-white">
+          View itinerary
+        </button>
+      </div>
     </div>
   );
 }
 
-function EmptyPanel({ title, text, action, onAction }: { title: string; text: string; action: string; onAction: () => void }) {
+function PaymentMetric({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50 py-12 px-6 text-center">
-      <p className="font-bold text-stone-800">{title}</p>
-      <p className="text-sm text-stone-400 mt-1 max-w-sm mx-auto">{text}</p>
-      <button onClick={onAction} className="mt-5 px-5 py-2.5 rounded-full bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition-colors">
+    <div className="rounded-2xl bg-stone-50 p-3 text-center">
+      <p className="text-[10px] font-black uppercase tracking-wide text-stone-400">{label}</p>
+      <p className="mt-1 truncate text-sm font-black text-stone-950">{value}</p>
+    </div>
+  );
+}
+
+function EmptyState({
+  title,
+  text,
+  action,
+  onAction,
+  compact = false,
+}: {
+  title: string;
+  text: string;
+  action: string;
+  onAction: () => void;
+  compact?: boolean;
+}) {
+  return (
+    <div className={`rounded-[1.75rem] border border-dashed border-indigo-100 bg-white p-5 text-center shadow-sm ${compact ? "py-6" : "py-8"}`}>
+      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-indigo-50 to-sky-50 text-indigo-600">
+        <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+        </svg>
+      </div>
+      <h3 className="mt-4 text-lg font-black text-stone-950">{title}</h3>
+      <p className="mx-auto mt-1 max-w-xs text-sm leading-6 text-stone-500">{text}</p>
+      <button onClick={onAction} className="mt-5 h-11 rounded-full bg-stone-950 px-5 text-sm font-black text-white">
         {action}
       </button>
     </div>
   );
 }
 
-function BreakdownRow({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
-  const percent = Math.round((value / total) * 100);
+function TripSkeleton() {
   return (
-    <div>
-      <div className="flex items-center justify-between text-sm mb-2">
-        <span className="font-semibold text-stone-700">{label}</span>
-        <span className="text-stone-400">{value}</span>
-      </div>
-      <div className="h-2 rounded-full bg-stone-100 overflow-hidden">
-        <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${percent}%` }} />
+    <div className="overflow-hidden rounded-[1.75rem] bg-white shadow-sm ring-1 ring-stone-100">
+      <div className="h-44 animate-pulse bg-stone-200" />
+      <div className="space-y-3 p-4">
+        <div className="h-12 animate-pulse rounded-2xl bg-stone-100" />
+        <div className="h-12 animate-pulse rounded-2xl bg-stone-100" />
       </div>
     </div>
   );

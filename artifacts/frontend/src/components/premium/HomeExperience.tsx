@@ -6,6 +6,28 @@ import { apiFetch } from "@/lib/api";
 import { useUser } from "@/context/UserContext";
 import { Story, StoryModal } from "./StoryModal";
 
+const FALLBACK_TRAVEL_IMAGE = "/images/unsplash-be41aa2e4372.jpg";
+
+function TravelImage({ src, alt, className }: { src?: string; alt?: string; className?: string }) {
+  const [currentSrc, setCurrentSrc] = useState(src || FALLBACK_TRAVEL_IMAGE);
+
+  useEffect(() => {
+    setCurrentSrc(src || FALLBACK_TRAVEL_IMAGE);
+  }, [src]);
+
+  return (
+    <img
+      src={currentSrc}
+      alt={alt || ""}
+      loading="lazy"
+      decoding="async"
+      className={className}
+      onError={() => {
+        if (currentSrc !== FALLBACK_TRAVEL_IMAGE) setCurrentSrc(FALLBACK_TRAVEL_IMAGE);
+      }}
+    />
+  );
+}
 
 interface PremiumHeroProps {
   destinationCount: number;
@@ -25,7 +47,7 @@ export function PremiumHero({ destinationCount, search, onSearch, onChip, onPlan
   }, []);
 
   return (
-    <section className="relative min-h-[92vh] overflow-hidden bg-stone-950">
+    <section className="relative h-[70svh] min-h-[400px] max-h-[620px] overflow-hidden bg-stone-950 pt-[env(safe-area-inset-top)] md:min-h-[680px] md:max-h-[760px]">
       <motion.video
         autoPlay
         loop
@@ -41,39 +63,39 @@ export function PremiumHero({ destinationCount, search, onSearch, onChip, onPlan
       <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/40 to-black/90" />
       <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#f8f5f0] to-transparent" />
 
-      <div className="relative z-10 mx-auto flex min-h-[92vh] max-w-7xl flex-col justify-center px-5 pt-24 sm:px-8 lg:px-10">
+      <div className="relative z-10 mx-auto flex h-full max-w-7xl flex-col justify-center px-4 pb-8 pt-24 sm:px-8 lg:px-10">
         <motion.div
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7 }}
           className="max-w-4xl"
         >
-          <div className="mb-5 inline-flex items-center gap-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white backdrop-blur-md">
+          <div className="mb-4 inline-flex max-w-full items-center gap-3 rounded-full border border-white/20 bg-white/10 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white backdrop-blur-md sm:px-4 sm:text-xs">
             <span className="h-2 w-2 rounded-full bg-emerald-300 animate-pulse" />
-            {active.name} - {active.label}
+            <span className="truncate">{active.name} - {active.label}</span>
           </div>
-          <h1 className="max-w-4xl text-5xl font-black leading-[1.1] text-white sm:text-6xl md:text-7xl lg:text-8xl">
-            Explore Incredible India
+          <h1 className="max-w-3xl text-4xl font-black leading-[1.05] text-white sm:text-5xl md:text-6xl lg:text-7xl">
+            Find your next escape
           </h1>
-          <p className="mt-6 max-w-2xl text-base leading-relaxed text-white/80 sm:text-lg md:text-xl">
-            Plan unforgettable journeys across India with curated destinations, smart itineraries, verified reviews, and premium local experiences.
+          <p className="mt-4 max-w-xl text-sm leading-6 text-white/80 sm:text-base md:text-lg">
+            Curated India trips, premium stays, and local experiences in one place.
           </p>
 
-          <div className="mt-10 max-w-3xl">
-            <div className="flex flex-wrap items-center gap-3">
+          <div className="mt-7 max-w-3xl">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <button
                 onClick={onPlanTrip}
-                className="h-14 rounded-full bg-indigo-600 px-8 text-sm font-black text-white shadow-[0_0_20px_rgba(79,70,229,0.3)] transition hover:bg-indigo-500 hover:scale-105"
+                className="h-12 w-fit rounded-full bg-indigo-600 px-6 text-sm font-black text-white shadow-[0_0_20px_rgba(79,70,229,0.3)] transition hover:bg-indigo-500 hover:scale-105"
               >
                 Plan My Trip
               </button>
               
-              <div className="flex flex-wrap gap-2 ml-4">
+              <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
                 {["Beach", "Mountains", "Adventure", "Heritage", "Spiritual", "Family"].map((chip) => (
                 <button
                   key={chip}
                   onClick={() => onChip(chip)}
-                  className="rounded-full border border-white/20 bg-white/10 px-5 py-2 text-xs font-bold text-white backdrop-blur-md transition hover:bg-white hover:text-stone-900"
+                  className="shrink-0 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-bold text-white backdrop-blur-md transition hover:bg-white hover:text-stone-900"
                 >
                   {chip}
                 </button>
@@ -83,7 +105,7 @@ export function PremiumHero({ destinationCount, search, onSearch, onChip, onPlan
           </div>
         </motion.div>
 
-        <div className="mt-10 grid max-w-3xl grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="mt-7 grid max-w-xl grid-cols-4 gap-2">
           {[
             ["Destinations", destinationCount > 0 ? `${destinationCount}+` : "16+"],
             ["Reviews", "50K+"],
@@ -95,10 +117,10 @@ export function PremiumHero({ destinationCount, search, onSearch, onChip, onPlan
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.12 * i }}
-              className="group rounded-2xl border border-white/15 bg-white/10 p-5 text-white backdrop-blur-md transition-all hover:-translate-y-1 hover:bg-white/20"
+              className="group rounded-2xl border border-white/15 bg-white/10 p-3 text-white backdrop-blur-md transition-all hover:-translate-y-1 hover:bg-white/20 sm:p-4"
             >
-              <div className="text-3xl font-black md:text-4xl">{value}</div>
-              <div className="mt-2 text-xs font-semibold tracking-wide text-white/70 uppercase">{label}</div>
+              <div className="text-lg font-black sm:text-2xl md:text-3xl">{value}</div>
+              <div className="mt-1 text-[9px] font-semibold tracking-wide text-white/70 uppercase sm:text-[10px]">{label}</div>
             </motion.div>
           ))}
         </div>
@@ -183,17 +205,17 @@ export function PremiumHomeSections({ destinations = [], onPackageOpen, onRegion
 
   return (
     <div className="bg-[#f8f5f0]">
-      <section className="mx-auto max-w-7xl px-5 py-14 sm:px-8 lg:px-10">
+      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-8 md:py-14 lg:px-10">
         <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.22em] text-indigo-500">Curated Trips</p>
-            <h2 className="mt-2 text-3xl font-black text-stone-950">Trending Packages</h2>
+            <h2 className="mt-2 text-2xl font-black text-stone-950 sm:text-3xl">Trending Packages</h2>
           </div>
-          <button onClick={onOpenAllPackages} className="self-start rounded-full bg-stone-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-indigo-700 sm:self-auto">
+          <button onClick={onOpenAllPackages} className="self-start rounded-full bg-stone-950 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-indigo-700 sm:self-auto sm:text-sm">
             View all packages
           </button>
         </div>
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 sm:-mx-8 sm:px-8 md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 md:pb-0 xl:grid-cols-4">
           {packages.slice(0, 4).map((pkg, index) => (
             <motion.button
               key={pkg.id}
@@ -202,41 +224,41 @@ export function PremiumHomeSections({ destinations = [], onPackageOpen, onRegion
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-80px" }}
               transition={{ delay: index * 0.05 }}
-              className="group overflow-hidden rounded-2xl border border-stone-100 bg-white text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+              className="group w-[292px] shrink-0 snap-start overflow-hidden rounded-2xl border border-stone-100 bg-white text-left shadow-sm transition hover:-translate-y-1 hover:shadow-xl sm:w-[320px] md:w-auto"
             >
-              <div className="relative h-52 overflow-hidden">
-                <img src={pkg.coverImage} alt={pkg.title} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
+              <div className="relative aspect-[4/3] overflow-hidden">
+                <TravelImage src={pkg.coverImage} alt={pkg.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                 <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-[11px] font-black text-indigo-700">{pkg.duration}</div>
                 <div className="absolute bottom-4 left-4 right-4">
-                  <h3 className="text-2xl font-black text-white">{pkg.title}</h3>
+                  <h3 className="line-clamp-2 text-xl font-black leading-tight text-white">{pkg.title}</h3>
                   <p className="text-xs font-semibold text-white/70">{pkg.destination}</p>
                 </div>
               </div>
-              <div className="p-5">
+              <div className="p-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-black text-stone-950">{pkg.price}</span>
                   <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-black text-amber-700">{pkg.rating.toFixed(1)} rating</span>
                 </div>
-                <div className="mt-4 space-y-2">
-                  {pkg.highlights.map((item: string) => (
+                <div className="mt-3 space-y-2">
+                  {pkg.highlights.slice(0, 2).map((item: string) => (
                     <div key={item} className="flex items-center gap-2 text-xs font-semibold text-stone-500">
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                       {item}
                     </div>
                   ))}
                 </div>
-                <div className="mt-5 text-xs font-black text-indigo-600">Explore package</div>
+                <div className="mt-4 text-xs font-black text-indigo-600">Explore package</div>
               </div>
             </motion.button>
           ))}
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-8 px-5 py-10 sm:px-8 lg:grid-cols-[0.86fr_1.14fr] lg:px-10">
+      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-8 lg:grid-cols-[0.86fr_1.14fr] lg:px-10">
         <div className="flex flex-col justify-center">
           <p className="text-xs font-black uppercase tracking-[0.22em] text-orange-600">Interactive India Map</p>
-          <h2 className="mt-2 text-3xl font-black text-stone-950">Pick a region. Watch the destinations adjust.</h2>
+          <h2 className="mt-2 text-2xl font-black text-stone-950 sm:text-3xl">Pick a region. Watch the destinations adjust.</h2>
           <p className="mt-4 text-sm leading-7 text-stone-500">
             Explore India through six robust travel regions. Hover a region for details, then tap it to filter destinations instantly.
           </p>
@@ -280,13 +302,13 @@ export function PremiumHomeSections({ destinations = [], onPackageOpen, onRegion
             </motion.div>
           </AnimatePresence>
         </div>
-        <div className="relative min-h-[500px] overflow-hidden rounded-[2rem] border border-orange-100 bg-[#fffaf0] p-4 shadow-[0_24px_80px_rgba(120,53,15,0.10)] sm:p-6">
+        <div className="relative min-h-[360px] overflow-hidden rounded-[2rem] border border-orange-100 bg-[#fffaf0] p-4 shadow-[0_24px_80px_rgba(120,53,15,0.10)] sm:p-6 md:min-h-[500px]">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(251,146,60,0.16),transparent_28%),radial-gradient(circle_at_90%_18%,rgba(14,165,233,0.16),transparent_26%),linear-gradient(135deg,#fff7ed,#f8fafc_48%,#ecfdf5)]" />
           <div className="absolute left-6 top-6 rounded-full border border-orange-200 bg-white/75 px-4 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-orange-700 shadow-sm backdrop-blur z-10">
             Interactive States Map
           </div>
           
-          <div className="relative mx-auto h-[500px] w-full max-w-[460px] overflow-visible">
+          <div className="relative mx-auto h-[360px] w-full max-w-[460px] overflow-visible md:h-[500px]">
             <svg
               viewBox="0 0 612 696"
               aria-label="Interactive map of India"
@@ -355,12 +377,12 @@ export function PremiumHomeSections({ destinations = [], onPackageOpen, onRegion
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-5 py-14 sm:px-8 lg:px-10">
+      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-8 md:py-14 lg:px-10">
         <div className="mb-7">
           <p className="text-xs font-black uppercase tracking-[0.22em] text-rose-500">Real Traveller Moments</p>
-          <h2 className="mt-2 text-3xl font-black text-stone-950">Stories that feel like you were there</h2>
+          <h2 className="mt-2 text-2xl font-black text-stone-950 sm:text-3xl">Stories that feel like you were there</h2>
         </div>
-        <div className="columns-1 gap-5 sm:columns-2 lg:columns-3 xl:columns-4">
+        <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 sm:-mx-8 sm:px-8 lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0 lg:pb-0">
           {stories.length > 0 ? stories.map((story, index) => (
             <motion.div
               key={story.id || story._id}
@@ -369,9 +391,9 @@ export function PremiumHomeSections({ destinations = [], onPackageOpen, onRegion
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.05 }}
-              className="mb-5 break-inside-avoid overflow-hidden rounded-2xl border border-stone-100 bg-white shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+              className="w-[220px] shrink-0 snap-start overflow-hidden rounded-2xl border border-stone-100 bg-white shadow-sm cursor-pointer hover:shadow-md transition-shadow lg:w-auto"
             >
-              <img src={story.images[0] || "/images/unsplash-451710d2942a.jpg"} alt={story.destinationId?.name} loading="lazy" className={`w-full object-cover ${index % 2 ? "h-60 sm:h-72" : "h-48 sm:h-56"}`} />
+              <TravelImage src={story.images[0] || "/images/unsplash-451710d2942a.jpg"} alt={story.destinationId?.name} className="h-64 w-full object-cover" />
               <div className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -403,9 +425,9 @@ export function PremiumHomeSections({ destinations = [], onPackageOpen, onRegion
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.05 }}
-              className="mb-5 break-inside-avoid overflow-hidden rounded-2xl border border-stone-100 bg-white shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+              className="w-[220px] shrink-0 snap-start overflow-hidden rounded-2xl border border-stone-100 bg-white shadow-sm cursor-pointer hover:shadow-md transition-shadow lg:w-auto"
             >
-              <img src={moment.image} alt={moment.destination} loading="lazy" className={`w-full object-cover ${index % 2 ? "h-60 sm:h-72" : "h-48 sm:h-56"}`} />
+              <TravelImage src={moment.image} alt={moment.destination} className="h-64 w-full object-cover" />
               <div className="p-4">
                 <div className="flex items-center justify-between">
                   <div>

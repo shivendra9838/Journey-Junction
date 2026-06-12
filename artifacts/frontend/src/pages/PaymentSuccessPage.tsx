@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { apiFetch } from "@/lib/api";
+import LoadingState from "@/components/LoadingState";
 
 type Booking = {
   id: string;
@@ -68,10 +69,7 @@ export default function PaymentSuccessPage() {
     <div className="min-h-screen bg-[#f8f5f0] px-4 py-10 text-stone-800">
       <div className="mx-auto max-w-3xl rounded-3xl border border-stone-100 bg-white p-6 shadow-xl sm:p-10">
         {loading ? (
-          <div className="py-20 text-center">
-            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-            <p className="mt-4 text-sm font-semibold text-stone-500">Confirming your Stripe payment...</p>
-          </div>
+          <LoadingState message="Confirming your Stripe payment..." />
         ) : error ? (
           <div className="py-16 text-center">
             <p className="text-xs font-black uppercase tracking-[0.22em] text-rose-500">Payment Issue</p>
