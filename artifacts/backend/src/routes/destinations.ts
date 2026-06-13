@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { CustomDestModel, isDBConnected } from "@workspace/db";
+import { ActivityModel, HotelModel, PhaseDestinationModel } from "@workspace/db/src/schema/phase1";
 import { localCustomDests } from "../lib/localStore";
 import { coordinatesForDestination } from "../lib/geo";
 import { DESTINATIONS, getDestinationById, type DestinationSummary } from "../data/destinations";
@@ -190,6 +191,76 @@ function normalizeCustom(d: any, isCustom = true, options: { compact?: boolean }
   };
 }
 
+function normalizePhaseDestination(d: any, options: { compact?: boolean } = {}) {
+  const gallery = (d.gallery?.length ? d.gallery : [d.heroImage]).filter(Boolean);
+  const stateSlug = slugify(d.state);
+  return {
+    id: d.slug,
+    dbId: d._id?.toString?.() ?? d.id ?? d.slug,
+    slug: d.slug,
+    name: d.name,
+    city: d.name,
+    state: d.state,
+    stateSlug,
+    country: "India",
+    region: d.region,
+    heroImage: d.heroImage,
+    images: gallery,
+    photos: gallery,
+    gallery,
+    tagline: d.description,
+    rating: d.rating ?? 4.5,
+    reviews: 0,
+    reviewCount: 0,
+    latitude: d.latitude ?? d.location?.coordinates?.[1] ?? 0,
+    longitude: d.longitude ?? d.location?.coordinates?.[0] ?? 0,
+    tags: [d.region, d.state].filter(Boolean),
+    climateLabel: d.temperature || "",
+    climate: d.temperature || "",
+    isPublished: true,
+    isCustom: true,
+    highlights: options.compact ? [] : [
+      { icon: "sun", label: "Best Time", value: d.bestTime || "Oct - Mar" },
+      { icon: "temp", label: "Temperature", value: d.temperature || "Seasonal" },
+      { icon: "chat", label: "Language", value: d.language || "Hindi / English" },
+      { icon: "inr", label: "Currency", value: d.currency || "INR" },
+    ],
+    about: {
+      label: d.region || d.state,
+      heading: `Discover ${d.name}`,
+      para1: d.description || "",
+      para2: `${d.name} in ${d.state} is ready for stays, experiences and transport planning.`,
+      tags: [d.region, d.state].filter(Boolean),
+      ctaHeading: `Plan your ${d.name} trip`,
+      ctaDesc: "Compare stays, experiences and travel options from one place.",
+    },
+    activities: [],
+    hotels: [],
+    transports: [],
+    meals: [],
+    flights: [],
+    flightIntro: "",
+    flightTip: "",
+    trains: [],
+    trainIntro: "",
+    trainTip: "",
+    transfers: [],
+    transferIntro: "",
+    transferTip: "",
+    airportName: "",
+    airportCode: "",
+    mapPoints: [],
+    weatherData: [],
+    seasons: [],
+    reviewsData: [],
+    communityPhotos: options.compact ? [] : gallery,
+    quickAdds: [],
+    botReplies: { default: `Ask me about hotels, activities, weather or budget for ${d.name}.`, hotel: "", activity: "", weather: "", price: "", food: "" },
+    createdAt: d.createdAt,
+    updatedAt: d.updatedAt,
+  };
+}
+
 async function publishedCustomDestinationSummaries() {
   if (!isDBConnected()) return localCustomDests.filter((dest) => dest.isPublished).map(dest => normalizeCustom(dest, true, { compact: true }));
   try {
@@ -200,6 +271,18 @@ async function publishedCustomDestinationSummaries() {
     return docs.map(dest => normalizeCustom(dest, true, { compact: true }));
   } catch (err) {
     return localCustomDests.filter((dest) => dest.isPublished).map(dest => normalizeCustom(dest, true, { compact: true }));
+  }
+}
+
+async function publishedPhaseDestinationSummaries() {
+  if (!isDBConnected()) return [];
+  try {
+    const docs = await PhaseDestinationModel.find()
+      .sort({ state: 1, name: 1 })
+      .lean<any[]>();
+    return docs.map(dest => normalizePhaseDestination(dest, { compact: true }));
+  } catch (err) {
+    return [];
   }
 }
 
@@ -215,10 +298,109 @@ async function findPublishedCustomDestination(filter: Record<string, unknown>) {
   return destination ? normalizeCustom(destination) : null;
 }
 
+async function findPhaseDestinationBySlug(slug: string) {
+  if (!isDBConnected()) return null;
+  const normalizedSlug = slugify(slug);
+  const readableName = normalizedSlug.replace(/-/g, " ");
+  const escapedName = readableName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return PhaseDestinationModel.findOne({
+    $or: [
+      { slug },
+      { slug: normalizedSlug },
+      { name: new RegExp(`^${escapedName}$`, "i") },
+    ],
+  }).lean<any>();
+}
+
+async function findDestinationResourceBase(destinationSlug: string) {
+  const customDestination = await findPublishedCustomDestination({ slug: destinationSlug });
+  if (customDestination) return customDestination;
+
+  const staticDestination = getDestinationById(destinationSlug);
+  if (staticDestination) return normalizeStatic(staticDestination);
+
+  const phaseDestination = await findPhaseDestinationBySlug(destinationSlug);
+  return phaseDestination ? normalizePhaseDestination(phaseDestination) : null;
+}
+
+function normalizeDbHotel(hotel: any, context: { destinationSlug: string; destinationName: string; heroImage?: string; fallbackLocation?: string }) {
+  return {
+    id: hotel._id?.toString?.() ?? hotel.id,
+    destinationSlug: context.destinationSlug,
+    destinationName: context.destinationName,
+    name: hotel.name,
+    image: hotel.images?.[0] || context.heroImage || PLACEHOLDER_DESTINATION_IMAGE,
+    images: hotel.images ?? [],
+    price: `INR ${Number(hotel.pricePerNight || 0).toLocaleString("en-IN")}`,
+    pricePerNight: hotel.pricePerNight ?? 0,
+    perNight: "/night",
+    rating: hotel.rating ?? 4.5,
+    stars: Math.round(hotel.rating ?? 4),
+    location: hotel.address || context.fallbackLocation || "",
+    description: hotel.description || "",
+    amenities: hotel.amenities ?? [],
+    tag: hotel.amenities?.[0] || null,
+  };
+}
+
+function normalizeDbActivity(activity: any, context: { destinationSlug: string; destinationName: string; heroImage?: string }) {
+  return {
+    id: activity._id?.toString?.() ?? activity.id,
+    destinationSlug: context.destinationSlug,
+    destinationName: context.destinationName,
+    title: activity.title,
+    name: activity.title,
+    category: activity.difficulty || "Experience",
+    duration: activity.duration || "",
+    price: `INR ${Number(activity.price || 0).toLocaleString("en-IN")}`,
+    amount: activity.price ?? 0,
+    image: activity.images?.[0] || context.heroImage || PLACEHOLDER_DESTINATION_IMAGE,
+    images: activity.images ?? [],
+    description: activity.description || "",
+    badge: null,
+  };
+}
+
+function uniqueByName<T extends { id?: string; name?: string; title?: string }>(items: T[]) {
+  return items.filter((item, index, all) => {
+    const label = (item.name || item.title || "").toLowerCase();
+    return index === all.findIndex(other =>
+      (Boolean(item.id) && other.id === item.id) ||
+      (label && (other.name || other.title || "").toLowerCase() === label)
+    );
+  });
+}
+
+async function enrichDestinationResources(destination: any) {
+  const phaseDestination = await findPhaseDestinationBySlug(destination.slug);
+  if (!phaseDestination || !isDBConnected()) return destination;
+
+  const [dbHotels, dbActivities] = await Promise.all([
+    HotelModel.find({ destinationId: phaseDestination._id }).sort({ rating: -1, pricePerNight: 1 }).limit(50).lean<any[]>(),
+    ActivityModel.find({ destinationId: phaseDestination._id }).sort({ price: 1, title: 1 }).limit(100).lean<any[]>(),
+  ]);
+  const context = {
+    destinationSlug: destination.slug,
+    destinationName: destination.name,
+    heroImage: destination.heroImage || phaseDestination.heroImage,
+    fallbackLocation: phaseDestination.state || destination.city || destination.name,
+  };
+
+  return {
+    ...destination,
+    hotels: uniqueByName([...dbHotels.map(hotel => normalizeDbHotel(hotel, context)), ...(destination.hotels ?? [])]),
+    activities: uniqueByName([...dbActivities.map(activity => normalizeDbActivity(activity, context)), ...(destination.activities ?? [])]),
+  };
+}
+
 async function allPublishedDestinationSummaries() {
   const byRoute = new Map<string, ReturnType<typeof normalizeStatic>>();
   for (const destination of DESTINATIONS.map((dest) => normalizeStatic(dest))) {
     byRoute.set(`${destination.stateSlug}/${destination.slug}`, destination);
+  }
+  for (const destination of await publishedPhaseDestinationSummaries()) {
+    const routeKey = `${destination.stateSlug}/${destination.slug}`;
+    if (!byRoute.has(routeKey)) byRoute.set(routeKey, destination);
   }
   for (const destination of await publishedCustomDestinationSummaries()) {
     byRoute.set(`${destination.stateSlug}/${destination.slug}`, destination);
@@ -255,11 +437,38 @@ router.get("/destinations", async (req, res) => {
   res.json({ destinations: paged, states, pagination: { page, limit, total, pages: Math.ceil(total / limit) || 1 } });
 });
 
+router.get("/hotels", async (req, res) => {
+  const destinationSlug = String(req.query.destination ?? req.query.destinationSlug ?? "").trim();
+  if (!destinationSlug) {
+    res.json({ hotels: [] });
+    return;
+  }
+
+  const destination = await findDestinationResourceBase(destinationSlug);
+  const enrichedDestination = destination ? await enrichDestinationResources(destination) : null;
+  res.json({ hotels: enrichedDestination?.hotels ?? [] });
+});
+
+router.get("/activities", async (req, res) => {
+  const destinationSlug = String(req.query.destination ?? req.query.destinationSlug ?? "").trim();
+  if (!destinationSlug) {
+    res.json({ activities: [] });
+    return;
+  }
+
+  const destination = await findDestinationResourceBase(destinationSlug);
+  const enrichedDestination = destination ? await enrichDestinationResources(destination) : null;
+  res.json({ activities: enrichedDestination?.activities ?? [] });
+});
+
 router.get("/destinations/:stateSlug/:slug", async (req, res) => {
   const { stateSlug, slug } = req.params;
   const customDestination = await findPublishedCustomDestination({ stateSlug, slug });
   const staticDestination = DESTINATIONS.find(dest => (dest.stateSlug || slugify(dest.state)) === stateSlug && dest.slug === slug);
-  const destination = customDestination || (staticDestination ? normalizeStatic(staticDestination) : null);
+  const phaseDestination = await findPhaseDestinationBySlug(slug);
+  const normalizedPhaseDestination = phaseDestination ? normalizePhaseDestination(phaseDestination) : null;
+  const baseDestination = customDestination || (staticDestination ? normalizeStatic(staticDestination) : null) || (normalizedPhaseDestination?.stateSlug === stateSlug ? normalizedPhaseDestination : null);
+  const destination = baseDestination ? await enrichDestinationResources(baseDestination) : null;
   if (!destination) {
     res.status(404).json({ error: "Destination not found." });
     return;
@@ -275,7 +484,9 @@ router.get("/destinations/:stateSlug/:slug", async (req, res) => {
 router.get("/destinations/:id", async (req, res) => {
   const customDestination = await findPublishedCustomDestination({ slug: req.params.id });
   const staticDestination = getDestinationById(req.params.id);
-  const destination = customDestination || (staticDestination ? normalizeStatic(staticDestination) : null);
+  const phaseDestination = await findPhaseDestinationBySlug(req.params.id);
+  const baseDestination = customDestination || (staticDestination ? normalizeStatic(staticDestination) : null) || (phaseDestination ? normalizePhaseDestination(phaseDestination) : null);
+  const destination = baseDestination ? await enrichDestinationResources(baseDestination) : null;
   if (!destination) {
     res.status(404).json({ error: "Destination not found." });
     return;

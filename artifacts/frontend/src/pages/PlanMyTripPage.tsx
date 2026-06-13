@@ -206,9 +206,25 @@ export default function PlanMyTripPage() {
   const [dests, setDests] = useState<any[]>([]);
   const [fullDest, setFullDest] = useState<DestinationData | null>(null);
   const [dateError, setDateError] = useState("");
+  const [destinationSearch, setDestinationSearch] = useState("");
+  const [destinationsLoading, setDestinationsLoading] = useState(true);
   
   useEffect(() => {
-    apiFetch("/destinations?limit=120").then((d: any) => setDests(d.destinations || []));
+    let cancelled = false;
+    setDestinationsLoading(true);
+    apiFetch("/destinations?limit=120")
+      .then((d: any) => {
+        if (!cancelled) setDests(d.destinations || []);
+      })
+      .catch(() => {
+        if (!cancelled) setDests([]);
+      })
+      .finally(() => {
+        if (!cancelled) setDestinationsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -217,6 +233,22 @@ export default function PlanMyTripPage() {
   }, [form.destId]);
 
   const dest        = fullDest;
+  const filteredDests = useMemo(() => {
+    const query = destinationSearch.trim().toLowerCase();
+    if (!query) return dests;
+    return dests.filter((d) => {
+      const haystack = [
+        d.name,
+        d.city,
+        d.state,
+        d.country,
+        d.region,
+        d.tagline,
+        ...(d.tags || []),
+      ].filter(Boolean).join(" ").toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [dests, destinationSearch]);
   const nights      = form.checkIn && form.checkOut ? parseDays(form.checkIn, form.checkOut) : 0;
   const itinerary   = useMemo<DayPlan[]>(() => {
     if (!dest || !form.checkIn || !form.checkOut) return [];
@@ -336,8 +368,61 @@ export default function PlanMyTripPage() {
         {/* ── STEP 1: Destination ───────────────────────────────── */}
         {step === 1 && (
           <div>
+            <div className="mb-5 rounded-3xl border border-stone-100 bg-white p-3 shadow-sm">
+              <div className="flex h-12 items-center gap-3 rounded-2xl bg-stone-50 px-4">
+                <svg className="h-5 w-5 shrink-0 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  value={destinationSearch}
+                  onChange={e => setDestinationSearch(e.target.value)}
+                  placeholder="Search Goa, Kerala, Rajasthan..."
+                  className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-stone-900 placeholder:text-stone-400 focus:outline-none"
+                />
+                {destinationSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setDestinationSearch("")}
+                    aria-label="Clear destination search"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-stone-400"
+                  >
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+              <div className="mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
+                {["Goa", "Kerala", "Rajasthan", "Kashmir", "Beach", "Heritage"].map(term => (
+                  <button
+                    key={term}
+                    type="button"
+                    onClick={() => setDestinationSearch(term)}
+                    className="shrink-0 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-bold text-stone-600"
+                  >
+                    {term}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {dests.map((d, i) => (
+              {destinationsLoading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="aspect-[4/3] animate-pulse rounded-2xl bg-white shadow-sm" />
+                ))
+              ) : filteredDests.length === 0 ? (
+                <div className="col-span-full rounded-3xl border border-dashed border-stone-200 bg-white px-6 py-12 text-center shadow-sm">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-3xl bg-indigo-50 text-indigo-600">
+                    <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                    </svg>
+                  </div>
+                  <h3 className="mt-4 text-lg font-extrabold text-stone-900">No destinations found</h3>
+                  <p className="mx-auto mt-1 max-w-xs text-sm leading-6 text-stone-500">Try searching by destination, state, region, or travel style.</p>
+                  <button onClick={() => setDestinationSearch("")} className="mt-5 rounded-full bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white">Show all destinations</button>
+                </div>
+              ) : filteredDests.map((d, i) => (
                 <button
                   key={`${d.slug || d.id}-${i}`}
                   onClick={() => setForm(f => ({ ...f, destId: d.slug || d.id }))}
